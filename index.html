@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DiagnosticoCarbral - Oficina Mecânica</title>
+    
+    <!-- PWA / Add to Home Screen Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DiagnosticoCarbral">
+    <meta name="theme-color" content="#09090b">
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,{
+        %22name%22: %22DiagnosticoCarbral%22,
+        %22short_name%22: %22Carbral%22,
+        %22start_url%22: %22.%22,
+        %22display%22: %22standalone%22,
+        %22background_color%22: %22%2309090b%22,
+        %22theme_color%22: %22%23ef4444%22,
+        %22icons%22: [{%22src%22: %22https://placehold.co/192x192/ef4444/ffffff?text=DC%22, %22sizes%22: %22192x192%22, %22type%22: %22image/png%22}]
+    }">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darker: '#050507',
+                        dark: '#09090b',
+                        card: '#121216',
+                        border: '#27272a',
+                        primary: '#ef4444',
+                        primaryHover: '#dc2626',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ef4444; }
+        @media print {
+            body { background: white !important; color: black !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-darker text-zinc-100 min-h-screen flex flex-col selection:bg-red-600 selection:text-white">
+
+    <div id="app" class="flex-1 flex flex-col">
+        
+        <!-- LOGIN VIEW -->
+        <div id="login-view" class="flex-1 flex items-center justify-center p-4">
+            <div class="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-8 relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-rose-500 to-red-700"></div>
+                
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-600/10 border border-red-500/20 text-red-500 mb-4 text-2xl shadow-inner">
+                        <i class="fa-solid fa-car-rear"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold tracking-tight text-white">Diagnostico<span class="text-red-500">Carbral</span></h1>
+                    <p class="text-xs text-zinc-400 mt-1 uppercase tracking-wider font-semibold">Sistema de Inspeção Automotiva</p>
+                </div>
+
+                <!-- Tabs: Entrar / Cadastrar Empresa -->
+                <div class="flex bg-dark border border-border rounded-xl p-1 mb-6">
+                    <button type="button" onclick="switchAuthTab('login')" id="tab-login-btn" class="flex-1 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all">Entrar</button>
+                    <button type="button" onclick="switchAuthTab('register')" id="tab-register-btn" class="flex-1 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all">Cadastrar Empresa</button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" onsubmit="handleCompanyLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-300 mb-1.5 uppercase tracking-wide">CNPJ da Empresa</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-zinc-500">
+                                <i class="fa-solid fa-building"></i>
+                            </span>
+                            <input type="text" id="login-cnpj" required placeholder="00.000.000/0001-00" class="w-full bg-dark border border-border rounded-xl pl-11 pr-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-300 mb-1.5 uppercase tracking-wide">Senha</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-zinc-500">
+                                <i class="fa-solid fa-lock"></i>
+                            </span>
+                            <input type="password" id="login-password" required placeholder="Digite sua senha" class="w-full bg-dark border border-border rounded-xl pl-11 pr-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.99] transition-all text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-red-600/25 flex items-center justify-center gap-2">
+                        <span>Acessar Sistema</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </form>
+
+                <!-- Register Form (Hidden by default) -->
+                <form id="register-form" onsubmit="handleCompanyRegister(event)" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-300 mb-1.5 uppercase tracking-wide">Nome da Oficina / Empresa</label>
+                        <input type="text" id="reg-name" required placeholder="Ex: Oficina Mecânica Carbral" class="w-full bg-dark border border-border rounded-xl px-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-300 mb-1.5 uppercase tracking-wide">CNPJ da Empresa</label>
+                        <input type="text" id="reg-cnpj" required placeholder="00.000.000/0001-00" class="w-full bg-dark border border-border rounded-xl px-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-300 mb-1.5 uppercase tracking-wide">Criar Senha</label>
+                        <input type="password" id="reg-password" required placeholder="Mínimo 6 caracteres" class="w-full bg-dark border border-border rounded-xl px-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
+                    </div>
+
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.99] transition-all text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-red-600/25 flex items-center justify-center gap-2">
+                        <span>Cadastrar e Acessar</span>
+                        <i class="fa-solid fa-check text-xs"></i>
+                    </button>
+                </form>
+
+                <div class="mt-6 pt-6 border-t border-border/60 text-center">
+                    <p class="text-xs text-zinc-500">Dica: Para instalar no celular, clique no menu do navegador e selecione <span class="text-zinc-300 font-medium">"Adicionar à tela inicial"</span>.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard-view" class="hidden flex-1 flex flex-col">
+            <!-- Header -->
+            <header class="bg-card border-b border-border sticky top-0 z-30 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base md:text-lg tracking-tight text-white"><span id="company-display-name">DiagnosticoCarbral</span></h1>
+                        <p class="text-xs text-zinc-400 flex items-center gap-1.5">
+                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            CNPJ: <strong id="company-display-cnpj" class="text-zinc-200">00.000.000/0001-00</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="openNewDiagnosticModal()" class="bg-red-600 hover:bg-red-700 transition-colors text-white text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-red-600/20 flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span class="hidden sm:inline">Criar Novo Diagnóstico</span>
+                        <span class="sm:hidden">Novo</span>
+                    </button>
+                    <button onclick="handleLogout()" title="Sair" class="bg-dark border border-border hover:bg-zinc-800 text-zinc-300 hover:text-white p-2.5 rounded-xl transition-colors">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Navigation Tabs (Diagnósticos / Mecânicos) -->
+            <div class="bg-dark border-b border-border px-4 lg:px-8 py-3 flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-2 bg-card border border-border p-1 rounded-xl">
+                    <button onclick="switchDashboardTab('diagnostics')" id="dash-tab-diag" class="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        <span>Diagnósticos (<span id="total-count">0</span>)</span>
+                    </button>
+                    <button onclick="switchDashboardTab('mechanics')" id="dash-tab-mech" class="px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-users-gear"></i>
+                        <span>Mecânicos da Oficina (<span id="mechanics-count">0</span>)</span>
+                    </button>
+                </div>
+
+                <!-- Search Bar (Only active on Diagnostics tab) -->
+                <div id="search-bar-wrapper" class="w-full sm:w-72">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-500">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                        </span>
+                        <input type="text" id="search-plate" oninput="filterDiagnostics()" placeholder="Buscar por placa (ex: ABC)..." class="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-zinc-200 focus:outline-none focus:border-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT AREA -->
+            <main class="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full">
+                
+                <!-- TAB 1: DIAGNOSTICS -->
+                <div id="view-diagnostics" class="space-y-6">
+                    <div id="diagnostics-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="empty-state" class="hidden text-center py-16">
+                        <div class="w-16 h-16 rounded-2xl bg-dark border border-border flex items-center justify-center mx-auto text-zinc-500 text-2xl mb-4">
+                            <i class="fa-solid fa-car-burst"></i>
+                        </div>
+                        <h3 class="text-zinc-200 font-semibold mb-1">Nenhum diagnóstico encontrado</h3>
+                        <p class="text-xs text-zinc-500 max-w-sm mb-6">Cadastre um novo diagnóstico de veículo para começar o atendimento na oficina.</p>
+                        <button onclick="openNewDiagnosticModal()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors">
+                            Criar Primeiro Diagnóstico
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 2: MECHANICS -->
+                <div id="view-mechanics" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Add Mechanic Card -->
+                        <div class="bg-card border border-border rounded-2xl p-6 h-fit space-y-4">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                                    <i class="fa-solid fa-user-plus text-xs"></i>
+                                </div>
+                                <h3 class="font-bold text-white text-sm">Cadastrar Novo Mecânico</h3>
+                            </div>
+
+                            <form id="mechanic-form" onsubmit="saveMechanic(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-300 mb-1">Nome Completo *</label>
+                                    <input type="text" id="mech-name" required placeholder="Ex: Roberto Carlos" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-300 mb-1">Especialidade / Função</label>
+                                    <input type="text" id="mech-specialty" placeholder="Ex: Injeção Eletrônica, Motor, Freios" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-300 mb-1">Telefone / WhatsApp</label>
+                                    <input type="text" id="mech-phone" placeholder="(21) 99999-9999" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                                </div>
+
+                                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl text-xs shadow-lg shadow-red-600/25 transition-all flex items-center justify-center gap-2">
+                                    <span>Salvar Mecânico</span>
+                                    <i class="fa-solid fa-check text-xs"></i>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Mechanics List -->
+                        <div class="lg:col-span-2 space-y-4">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2">
+                                <i class="fa-solid id-badge"></i> Mecânicos Cadastrados na Oficina
+                            </h3>
+                            <div id="mechanics-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+    </div>
+
+    <!-- Modal: Criar/Editar Diagnóstico -->
+    <div id="diagnostic-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-card border border-border w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden my-8">
+            <div class="bg-dark px-6 py-4 border-b border-border flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <h3 id="modal-title" class="font-bold text-white text-base">Novo Diagnóstico de Veículo</h3>
+                </div>
+                <button onclick="closeDiagnosticModal()" class="text-zinc-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="diagnostic-form" onsubmit="saveDiagnostic(event)" class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="diag-id">
+                
+                <!-- Veículo & Info Básica -->
+                <div class="space-y-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2">
+                        <i class="fa-solid fa-car"></i> Informações do Veículo & Mecânico Responsável
+                    </h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-300 mb-1">Placa do Veículo *</label>
+                            <input type="text" id="diag-placa" required placeholder="ABC-1D23" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm uppercase text-zinc-200 focus:outline-none focus:border-red-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-300 mb-1">Quilometragem (KM) *</label>
+                            <input type="number" id="diag-km" required placeholder="Ex: 45000" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-300 mb-1">Marca do Veículo *</label>
+                            <select id="diag-marca" required onchange="onBrandChange()" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                                <option value="">Selecione a Marca...</option>
+                                <option value="Volkswagen">Volkswagen</option>
+                                <option value="Chevrolet">Chevrolet</option>
+                                <option value="Fiat">Fiat</option>
+                                <option value="Toyota">Toyota</option>
+                                <option value="Hyundai">Hyundai</option>
+                                <option value="Jeep">Jeep</option>
+                                <option value="Honda">Honda</option>
+                                <option value="Renault">Renault</option>
+                                <option value="Ford">Ford</option>
+                                <option value="Outra">Outra (Digitar)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-medium text-zinc-300">Modelo do Veículo *</label>
+                                <button type="button" onclick="aiHelperModel()" class="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1 font-medium">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Sugerir via IA
+                                </button>
+                            </div>
+                            <input type="text" id="diag-modelo" required placeholder="Ex: Gol, Corolla, Onix..." class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-300 mb-1">Mecânico Responsável *</label>
+                        <select id="diag-mecanico-select" required class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                        <p class="text-[10px] text-zinc-500 mt-1">Caso o mecânico não apareça, cadastre-o na aba "Mecânicos da Oficina".</p>
+                    </div>
+                </div>
+
+                <!-- Defeitos e Problemas -->
+                <div class="space-y-4 pt-4 border-t border-border">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Relatório de Defeitos & Peças
+                        </h4>
+                        <button type="button" onclick="aiHelperDefects()" class="text-[10px] bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium transition-colors">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Sugerir Defeitos Comuns (IA)
+                        </button>
+                    </div>
+
+                    <!-- Defeitos Pré-cadastrados Checkboxes -->
+                    <div class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2" id="predef-list">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-zinc-300 mb-1">Relato Adicional / Observações Manuais</label>
+                        <textarea id="diag-obs" rows="3" placeholder="Descreva falhas específicas, barulhos relatados pelo cliente ou observações técnicas..." class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500"></textarea>
+                    </div>
+                </div>
+
+                <!-- Anexos (PDF, Imagens, Vídeos) -->
+                <div class="space-y-4 pt-4 border-t border-border">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2">
+                        <i class="fa-solid fa-paperclip"></i> Anexos (Fotos, Vídeos, Laudos PDF)
+                    </h4>
+                    
+                    <div class="border-2 border-dashed border-border hover:border-red-500/50 rounded-xl p-4 text-center transition-colors bg-dark/50">
+                        <input type="file" id="diag-files" multiple accept="image/*,video/*,application/pdf" class="hidden" onchange="handleFileSelect(event)">
+                        <label for="diag-files" class="cursor-pointer flex flex-col items-center">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl text-zinc-400 mb-2"></i>
+                            <span class="text-xs font-medium text-zinc-300">Clique para anexar arquivos (Fotos, Vídeos ou PDFs)</span>
+                            <span class="text-[10px] text-zinc-500 mt-1">Múltiplos arquivos permitidos</span>
+                        </label>
+                    </div>
+
+                    <div id="attachments-preview-container" class="flex flex-wrap gap-2">
+                        <!-- Preview chips -->
+                    </div>
+                </div>
+
+                <!-- Assinatura Digital (Nome Completo) -->
+                <div class="space-y-3 pt-4 border-t border-border bg-red-950/10 p-4 rounded-xl border border-red-900/30">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-signature text-red-500"></i>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-white">Assinatura Digital (Nome Completo)</h4>
+                    </div>
+                    <p class="text-xs text-zinc-400">Para confirmar este diagnóstico, digite seu <strong class="text-zinc-200">Nome Completo (como assinatura)</strong>:</p>
+                    
+                    <div>
+                        <input type="text" id="diag-signature-name" required placeholder="Ex: Carlos Alberto da Silva" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                    </div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-border">
+                    <button type="button" onclick="closeDiagnosticModal()" class="bg-dark border border-border hover:bg-zinc-800 text-zinc-300 px-5 py-2.5 rounded-xl text-xs font-semibold transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-red-600/25 transition-all">
+                        Salvar e Lançar Diagnóstico
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Visualizar Detalhes do Diagnóstico -->
+    <div id="view-diagnostic-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-8">
+            <div class="bg-dark px-6 py-4 border-b border-border flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                    <h3 class="font-bold text-white text-base">Detalhes do Diagnóstico</h3>
+                </div>
+                <button onclick="closeViewModal()" class="text-zinc-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div id="view-modal-body" class="p-6 space-y-6 max-h-[75vh] overflow-y-auto text-sm">
+                <!-- Populated dynamically -->
+            </div>
+
+            <div class="bg-dark px-6 py-4 border-t border-border flex justify-end gap-3">
+                <button onclick="closeViewModal()" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Anexos -->
+    <div id="attachments-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8">
+            <div class="bg-dark px-6 py-4 border-b border-border flex items-center justify-between">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-folder-tree text-red-500"></i> Anexos do Diagnóstico (<span id="att-plate-title"></span>)
+                </h3>
+                <button onclick="closeAttachmentsModal()" class="text-zinc-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <div id="attachments-list-container" class="space-y-3">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            
+            <div class="bg-dark px-6 py-4 border-t border-border flex justify-end">
+                <button onclick="closeAttachmentsModal()" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-xl text-xs font-semibold">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Notification Toast -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Hidden Printable Report for PDF Export -->
+    <div id="print-area" class="print-only bg-white text-black p-8 max-w-2xl mx-auto">
+        <!-- Generated dynamically on print -->
+    </div>
+
+    <script>
+        // Companies data storage
+        let companies = [];
+        let currentCompany = null;
+        let diagnostics = [];
+        let mechanics = [];
+        let currentTempAttachments = [];
+
+        // Common pre-registered defects
+        const COMMON_DEFECTS = [
+            "Pastilhas de freio gastas / chiando",
+            "Suspensão dianteira com folga / batendo",
+            "Óleo do motor vencido / nível baixo",
+            "Correia dentada ressecada / folgada",
+            "Sistema de arrefecimento com vazamento / aditivo vencido",
+            "Bateria com carga baixa / alternador oscilando",
+            "Velas e cabos de ignição carbonizados",
+            "Alinhamento e balanceamento desregulados",
+            "Pneus com desgaste irregular / abaixo do TWI",
+            "Filtro de ar / cabine saturados"
+        ];
+
+        // AI Brand to Models map for intelligent suggestion
+        const AI_MODELS_MAP = {
+            "Volkswagen": ["Gol 1.6", "Polo TSI", "Fox 1.6", "T-Cross TSI", "Nivus Highline", "Saveiro Robust"],
+            "Chevrolet": ["Onix Plus", "Tracker Turbo", "Cruze LTZ", "S10 High Country", "Spin Activ", "Montana RS"],
+            "Fiat": ["Strada Volcano", "Argo Drive", "Mobi Like", "Pulse Impetus", "Fastback Limited", "Toro Volcano"],
+            "Toyota": ["Corolla XEI", "Hilux SRV", "Yaris Sedan", "Corolla Cross", "RAV4 Hybrid", "SW4 SRX"],
+            "Hyundai": ["HB20 Comfort", "Creta Ultimate", "Tucson GL", "Santa Fe"],
+            "Jeep": ["Renegade Longitude", "Compass Limited", "Commander Overland"],
+            "Honda": ["Civic EXL", "HR-V Touring", "Fit LX", "City Hatch", "ZR-V"],
+            "Renault": ["Kwid Outsider", "Sandero RS", "Duster Iconic", "Captur Intense", "Oroch"],
+            "Ford": ["Ka SE", "EcoSport Freestyle", "Ranger Limited", "Focus Titanium"],
+            "Outra": ["Modelo Genérico / Outros"]
+        };
+
+        // Initialize App on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStoredCompanies();
+            checkSession();
+        });
+
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const loginBtn = document.getElementById('tab-login-btn');
+            const registerBtn = document.getElementById('tab-register-btn');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                loginBtn.className = 'flex-1 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all';
+                registerBtn.className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all';
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                registerBtn.className = 'flex-1 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all';
+                loginBtn.className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all';
+            }
+        }
+
+        function loadStoredCompanies() {
+            const saved = localStorage.getItem('diagnostico_carbral_companies');
+            if (saved) {
+                try {
+                    companies = JSON.parse(saved);
+                } catch(e) {
+                    companies = [];
+                }
+            } else {
+                companies = [
+                    { id: 'comp-1', name: 'Oficina Carbral Matriz', cnpj: '12.345.678/0001-99', password: '123' }
+                ];
+                saveCompaniesToDisk();
+            }
+        }
+
+        function saveCompaniesToDisk() {
+            localStorage.setItem('diagnostico_carbral_companies', JSON.stringify(companies));
+        }
+
+        function handleCompanyRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('reg-name').value.trim();
+            const cnpj = document.getElementById('reg-cnpj').value.trim();
+            const password = document.getElementById('reg-password').value;
+
+            if (companies.some(c => c.cnpj === cnpj)) {
+                showToast('Este CNPJ já está cadastrado!', 'error');
+                return;
+            }
+
+            const newCompany = {
+                id: 'comp-' + Date.now(),
+                name,
+                cnpj,
+                password
+            };
+
+            companies.push(newCompany);
+            saveCompaniesToDisk();
+
+            currentCompany = newCompany;
+            localStorage.setItem('diagnostico_carbral_session', JSON.stringify(newCompany));
+            
+            loadCompanyData(newCompany.id);
+            setupDashboard();
+            showToast('Empresa cadastrada com sucesso!', 'success');
+        }
+
+        function handleCompanyLogin(e) {
+            e.preventDefault();
+            const cnpj = document.getElementById('login-cnpj').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            const company = companies.find(c => c.cnpj === cnpj && c.password === password);
+            if (!company) {
+                showToast('CNPJ ou Senha incorretos!', 'error');
+                return;
+            }
+
+            currentCompany = company;
+            localStorage.setItem('diagnostico_carbral_session', JSON.stringify(company));
+            document.getElementById('login-password').value = '';
+
+            loadCompanyData(company.id);
+            setupDashboard();
+            showToast(`Bem-vindo, ${company.name}!`, 'success');
+        }
+
+        function loadCompanyData(companyId) {
+            // Load Diagnostics
+            const savedDiags = localStorage.getItem(`diagnostico_carbral_data_${companyId}`);
+            if (savedDiags) {
+                try {
+                    diagnostics = JSON.parse(savedDiags);
+                } catch(e) {
+                    diagnostics = [];
+                }
+            } else {
+                diagnostics = [
+                    {
+                        id: 'diag-1',
+                        placa: 'ABC-1234',
+                        km: '52000',
+                        marca: 'Volkswagen',
+                        modelo: 'Gol 1.6',
+                        mecanico: 'Carlos Silva',
+                        assinatura: 'Carlos Alberto da Silva',
+                        data: '03/10/2026 08:30',
+                        defeitos: ['Pastilhas de freio gastas / chiando', 'Óleo do motor vencido / nível baixo'],
+                        observacoes: 'Cliente relata chiado ao frear e leve demora na partida a frio.',
+                        anexos: [
+                            { name: 'laudo_freios.pdf', type: 'application/pdf', size: '1.2 MB', data: '#' },
+                            { name: 'foto_pastilha.jpg', type: 'image/jpeg', size: '840 KB', data: 'https://placehold.co/600x400/27272a/ef4444?text=Pastilha+Gasta' }
+                        ],
+                        status: 'Concluído'
+                    }
+                ];
+                saveStoredDataToDisk();
+            }
+
+            // Load Mechanics
+            const savedMechs = localStorage.getItem(`diagnostico_carbral_mechanics_${companyId}`);
+            if (savedMechs) {
+                try {
+                    mechanics = JSON.parse(savedMechs);
+                } catch(e) {
+                    mechanics = [];
+                }
+            } else {
+                mechanics = [
+                    { id: 'mech-1', name: 'Carlos Silva', specialty: 'Motor & Injeção', phone: '(21) 98888-1234' },
+                    { id: 'mech-2', name: 'Marcos Oliveira', specialty: 'Suspensão & Freios', phone: '(21) 97777-5678' }
+                ];
+                saveMechanicsToDisk();
+            }
+        }
+
+        function saveStoredDataToDisk() {
+            if (!currentCompany) return;
+            localStorage.setItem(`diagnostico_carbral_data_${currentCompany.id}`, JSON.stringify(diagnostics));
+        }
+
+        function saveMechanicsToDisk() {
+            if (!currentCompany) return;
+            localStorage.setItem(`diagnostico_carbral_mechanics_${currentCompany.id}`, JSON.stringify(mechanics));
+        }
+
+        function checkSession() {
+            const session = localStorage.getItem('diagnostico_carbral_session');
+            if (session) {
+                try {
+                    currentCompany = JSON.parse(session);
+                    loadCompanyData(currentCompany.id);
+                    setupDashboard();
+                } catch(e) {
+                    showView('login');
+                }
+            } else {
+                showView('login');
+            }
+        }
+
+        function setupDashboard() {
+            document.getElementById('company-display-name').textContent = currentCompany.name;
+            document.getElementById('company-display-cnpj').textContent = currentCompany.cnpj;
+            showView('dashboard');
+            switchDashboardTab('diagnostics');
+            renderPredefCheckboxes();
+        }
+
+        function showView(view) {
+            if (view === 'login') {
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('dashboard-view').classList.add('hidden');
+            } else {
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('diagnostico_carbral_session');
+            currentCompany = null;
+            diagnostics = [];
+            mechanics = [];
+            showView('login');
+            showToast('Sessão encerrada com sucesso.', 'info');
+        }
+
+        // Dashboard Tabs (Diagnostics vs Mechanics)
+        function switchDashboardTab(tab) {
+            const diagTabBtn = document.getElementById('dash-tab-diag');
+            const mechTabBtn = document.getElementById('dash-tab-mech');
+            const diagView = document.getElementById('view-diagnostics');
+            const mechView = document.getElementById('view-mechanics');
+            const searchBar = document.getElementById('search-bar-wrapper');
+
+            if (tab === 'diagnostics') {
+                diagTabBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center gap-2';
+                mechTabBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2';
+                diagView.classList.remove('hidden');
+                mechView.classList.add('hidden');
+                searchBar.classList.remove('hidden');
+                renderDiagnosticsList();
+            } else {
+                mechTabBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center gap-2';
+                diagTabBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2';
+                mechView.classList.remove('hidden');
+                diagView.classList.add('hidden');
+                searchBar.classList.add('hidden');
+                renderMechanicsList();
+            }
+            document.getElementById('mechanics-count').textContent = mechanics.length;
+        }
+
+        // Mechanics Management
+        function saveMechanic(e) {
+            e.preventDefault();
+            const name = document.getElementById('mech-name').value.trim();
+            const specialty = document.getElementById('mech-specialty').value.trim() || 'Geral';
+            const phone = document.getElementById('mech-phone').value.trim() || 'Não informado';
+
+            const newMech = {
+                id: 'mech-' + Date.now(),
+                name,
+                specialty,
+                phone
+            };
+
+            mechanics.push(newMech);
+            saveMechanicsToDisk();
+            document.getElementById('mechanic-form').reset();
+            renderMechanicsList();
+            showToast(`Mecânico ${name} cadastrado com sucesso!`, 'success');
+        }
+
+        function deleteMechanic(id) {
+            mechanics = mechanics.filter(m => m.id !== id);
+            saveMechanicsToDisk();
+            renderMechanicsList();
+            showToast('Mecânico removido.', 'info');
+        }
+
+        function renderMechanicsList() {
+            const container = document.getElementById('mechanics-list-container');
+            container.innerHTML = '';
+            document.getElementById('mechanics-count').textContent = mechanics.length;
+
+            if (mechanics.length === 0) {
+                container.innerHTML = `<p class="text-xs text-zinc-500 col-span-2 text-center py-8">Nenhum mecânico cadastrado. Cadastre ao lado para iniciar.</p>`;
+                return;
+            }
+
+            mechanics.forEach(m => {
+                container.innerHTML += `
+                    <div class="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                                <i class="fa-solid fa-user-gear"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">${m.name}</h4>
+                                <span class="text-[10px] text-red-400 font-medium block">${m.specialty}</span>
+                                <span class="text-[10px] text-zinc-500 block"><i class="fa-solid fa-phone text-[9px] mr-1"></i>${m.phone}</span>
+                            </div>
+                        </div>
+                        <button onclick="deleteMechanic('${m.id}')" title="Excluir Mecânico" class="text-zinc-500 hover:text-red-400 p-2 rounded-xl bg-dark border border-border transition-colors">
+                            <i class="fa-solid fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function populateMechanicsSelect(selectedName = '') {
+            const select = document.getElementById('diag-mecanico-select');
+            select.innerHTML = '<option value="">Selecione o Mecânico...</option>';
+            
+            if (mechanics.length === 0) {
+                select.innerHTML += '<option value="" disabled>Cadastre mecânicos na aba superior</option>';
+                return;
+            }
+
+            mechanics.forEach(m => {
+                const isSelected = m.name === selectedName ? 'selected' : '';
+                select.innerHTML += `<option value="${m.name}" ${isSelected}>${m.name} (${m.specialty})</option>`;
+            });
+        }
+
+        function renderPredefCheckboxes() {
+            const container = document.getElementById('predef-list');
+            container.innerHTML = '';
+            COMMON_DEFECTS.forEach((def, idx) => {
+                container.innerHTML += `
+                    <label class="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1 rounded hover:bg-zinc-900 transition-colors">
+                        <input type="checkbox" name="predef_defect" value="${def}" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500">
+                        <span>${def}</span>
+                    </label>
+                `;
+            });
+        }
+
+        // Render Diagnostics List with 4 specific actions (Visualizar, Editar, Cancelar, Baixar Anexos)
+        function renderDiagnosticsList(filteredList = null) {
+            const container = document.getElementById('diagnostics-container');
+            const emptyState = document.getElementById('empty-state');
+            const list = filteredList || diagnostics;
+
+            document.getElementById('total-count').textContent = diagnostics.length;
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            list.forEach(diag => {
+                let defeitosHtml = diag.defeitos.map(d => `<span class="inline-block bg-zinc-900 border border-border text-zinc-300 text-[10px] px-2 py-0.5 rounded-md">${d}</span>`).join('');
+                let attachmentsCount = diag.anexos ? diag.anexos.length : 0;
+                
+                let statusBadge = '<span class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold px-2.5 py-1 rounded-lg">Concluído</span>';
+                if (diag.status === 'Cancelado') {
+                    statusBadge = '<span class="bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-semibold px-2.5 py-1 rounded-lg">Cancelado</span>';
+                }
+
+                container.innerHTML += `
+                    <div class="bg-card border border-border hover:border-red-500/40 transition-all rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                        <div class="absolute top-0 left-0 bottom-0 w-1 ${diag.status === 'Cancelado' ? 'bg-zinc-600' : 'bg-red-600'} group-hover:bg-red-500 transition-colors"></div>
+                        
+                        <div>
+                            <div class="flex items-start justify-between gap-2 mb-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-600/10 px-2.5 py-1 rounded-lg border border-red-500/20">${diag.marca}</span>
+                                        ${statusBadge}
+                                    </div>
+                                    <h3 class="text-base font-bold text-white mt-1.5">${diag.modelo}</h3>
+                                </div>
+                                <div class="text-right">
+                                    <div class="bg-zinc-900 border border-border px-2.5 py-1 rounded-xl text-xs font-mono font-bold text-zinc-200">${diag.placa}</div>
+                                    <span class="text-[10px] text-zinc-500 mt-0.5 block">${diag.km} KM</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 mb-4">
+                                <div class="text-xs text-zinc-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-user-gear text-zinc-500"></i>
+                                    <span>Mecânico: <strong class="text-zinc-300">${diag.mecanico}</strong></span>
+                                </div>
+                                <div class="text-xs text-zinc-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-signature text-zinc-500"></i>
+                                    <span>Assinatura: <strong class="text-zinc-300">${diag.assinatura}</strong></span>
+                                </div>
+                                <div class="text-xs text-zinc-400 flex items-center gap-1.5">
+                                    <i class="fa-regular fa-clock text-zinc-500"></i>
+                                    <span>${diag.data}</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <span class="text-[10px] uppercase font-semibold text-zinc-500 block mb-1">Defeitos Constatados:</span>
+                                <div class="flex flex-wrap gap-1">
+                                    ${defeitosHtml || '<span class="text-xs text-zinc-500 italic">Nenhum defeito marcado</span>'}
+                                </div>
+                            </div>
+
+                            ${diag.observacoes ? `<p class="text-xs text-zinc-400 italic bg-dark p-2.5 rounded-xl border border-border/60 mb-4 line-clamp-2">"${diag.observacoes}"</p>` : ''}
+                        </div>
+
+                        <!-- Card Footer & 4 Required Actions -->
+                        <div class="pt-4 border-t border-border flex items-center justify-between gap-1 mt-2 flex-wrap">
+                            <button onclick="viewDiagnostic('${diag.id}')" title="Visualizar Diagnóstico" class="bg-dark hover:bg-zinc-800 border border-border text-zinc-300 hover:text-white px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 transition-colors">
+                                <i class="fa-solid fa-eye text-sky-400"></i>
+                                <span class="text-[11px]">Visualizar</span>
+                            </button>
+
+                            <button onclick="editDiagnostic('${diag.id}')" title="Editar Diagnóstico" class="bg-dark hover:bg-zinc-800 border border-border text-zinc-300 hover:text-white px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 transition-colors">
+                                <i class="fa-solid fa-pen text-amber-400"></i>
+                                <span class="text-[11px]">Editar</span>
+                            </button>
+
+                            <button onclick="openAttachmentsModalById('${diag.id}')" title="Baixar Anexos" class="bg-dark hover:bg-zinc-800 border border-border text-zinc-300 hover:text-white px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 transition-colors">
+                                <i class="fa-solid fa-paperclip text-red-500"></i>
+                                <span class="text-[11px]">Anexos (${attachmentsCount})</span>
+                            </button>
+
+                            <button onclick="cancelDiagnostic('${diag.id}')" title="Cancelar Diagnóstico" class="bg-dark hover:bg-zinc-800 border border-border text-zinc-400 hover:text-red-400 px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 transition-colors">
+                                <i class="fa-solid fa-ban text-red-500"></i>
+                                <span class="text-[11px]">Cancelar</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function filterDiagnostics() {
+            const query = document.getElementById('search-plate').value.toUpperCase().trim();
+            if (!query) {
+                renderDiagnosticsList();
+                return;
+            }
+            const filtered = diagnostics.filter(d => d.placa.toUpperCase().includes(query));
+            renderDiagnosticsList(filtered);
+        }
+
+        // AI Helper for Vehicle Model filtering by Brand
+        function onBrandChange() {
+            const brand = document.getElementById('diag-marca').value;
+            const modelInput = document.getElementById('diag-modelo');
+            if (AI_MODELS_MAP[brand] && AI_MODELS_MAP[brand].length > 0) {
+                modelInput.placeholder = `Ex: ${AI_MODELS_MAP[brand][0]}, ${AI_MODELS_MAP[brand][1]}`;
+            } else {
+                modelInput.placeholder = `Ex: Modelo do veículo`;
+            }
+        }
+
+        function aiHelperModel() {
+            const brand = document.getElementById('diag-marca').value;
+            if (!brand) {
+                showToast('Selecione uma marca primeiro para a IA sugerir modelos.', 'error');
+                return;
+            }
+            const models = AI_MODELS_MAP[brand] || ["Modelo Padrão"];
+            const randomModel = models[Math.floor(Math.random() * models.length)];
+            document.getElementById('diag-modelo').value = randomModel;
+            showToast(`IA sugeriu o modelo: ${randomModel}`, 'success');
+        }
+
+        function aiHelperDefects() {
+            const checkboxes = document.querySelectorAll('input[name="predef_defect"]');
+            checkboxes.forEach((cb, index) => {
+                if (index === 0 || index === 2 || index === 4) {
+                    cb.checked = true;
+                }
+            });
+            showToast('IA selecionou defeitos comuns com base no histórico!', 'success');
+        }
+
+        // New / Edit Modal Actions
+        function openNewDiagnosticModal() {
+            document.getElementById('modal-title').textContent = "Novo Diagnóstico de Veículo";
+            document.getElementById('diag-id').value = '';
+            document.getElementById('diagnostic-form').reset();
+            currentTempAttachments = [];
+            populateMechanicsSelect();
+            renderAttachmentsPreview();
+            document.getElementById('diagnostic-modal').classList.remove('hidden');
+        }
+
+        function closeDiagnosticModal() {
+            document.getElementById('diagnostic-modal').classList.add('hidden');
+        }
+
+        function editDiagnostic(id) {
+            const diag = diagnostics.find(d => d.id === id);
+            if (!diag) return;
+
+            document.getElementById('modal-title').textContent = `Editar Diagnóstico - ${diag.placa}`;
+            document.getElementById('diag-id').value = diag.id;
+            document.getElementById('diag-placa').value = diag.placa;
+            document.getElementById('diag-km').value = diag.km;
+            document.getElementById('diag-marca').value = diag.marca || '';
+            document.getElementById('diag-modelo').value = diag.modelo;
+            document.getElementById('diag-obs').value = diag.observacoes || '';
+            document.getElementById('diag-signature-name').value = diag.assinatura || '';
+
+            populateMechanicsSelect(diag.mecanico);
+
+            // Check predef defects
+            const checkboxes = document.querySelectorAll('input[name="predef_defect"]');
+            checkboxes.forEach(cb => {
+                cb.checked = diag.defeitos.includes(cb.value);
+            });
+
+            currentTempAttachments = diag.anexos ? [...diag.anexos] : [];
+            renderAttachmentsPreview();
+
+            document.getElementById('diagnostic-modal').classList.remove('hidden');
+        }
+
+        // View Diagnostic Modal Details
+        function viewDiagnostic(id) {
+            const diag = diagnostics.find(d => d.id === id);
+            if (!diag) return;
+
+            const modalBody = document.getElementById('view-modal-body');
+            let defeitosList = diag.defeitos.map(d => `<li class="text-zinc-300">${d}</li>`).join('');
+
+            modalBody.innerHTML = `
+                <div class="flex items-center justify-between border-b border-border pb-4">
+                    <div>
+                        <span class="text-xs font-bold text-red-500 uppercase tracking-wider">${diag.marca}</span>
+                        <h2 class="text-lg font-bold text-white">${diag.modelo}</h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="bg-dark border border-border px-3 py-1 rounded-xl text-xs font-mono font-bold text-zinc-200">${diag.placa}</span>
+                        <span class="text-xs text-zinc-400 block mt-1">${diag.km} KM</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 bg-dark p-4 rounded-xl border border-border">
+                    <div>
+                        <span class="text-[10px] uppercase font-semibold text-zinc-500 block">Mecânico Responsável</span>
+                        <strong class="text-zinc-200 text-xs">${diag.mecanico}</strong>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-semibold text-zinc-500 block">Data do Diagnóstico</span>
+                        <strong class="text-zinc-200 text-xs">${diag.data}</strong>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Defeitos Constatados</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs bg-dark p-3 rounded-xl border border-border">
+                        ${defeitosList || '<span class="text-zinc-500 italic">Nenhum defeito registrado</span>'}
+                    </ul>
+                </div>
+
+                ${diag.observacoes ? `
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Observações Técnicas</h4>
+                    <p class="text-xs text-zinc-300 bg-dark p-3 rounded-xl border border-border">${diag.observacoes}</p>
+                </div>
+                ` : ''}
+
+                <div class="border-t border-border pt-4 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] uppercase font-semibold text-zinc-500 block">Assinatura Digital</span>
+                        <strong class="text-zinc-200 text-xs">${diag.assinatura}</strong>
+                    </div>
+                    <button onclick="downloadPDF('${diag.id}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-pdf"></i> Baixar Laudo PDF
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('view-diagnostic-modal').classList.remove('hidden');
+        }
+
+        function closeViewModal() {
+            document.getElementById('view-diagnostic-modal').classList.add('hidden');
+        }
+
+        // Cancel Diagnostic Status
+        function cancelDiagnostic(id) {
+            const diag = diagnostics.find(d => d.id === id);
+            if (!diag) return;
+
+            diag.status = diag.status === 'Cancelado' ? 'Concluído' : 'Cancelado';
+            saveStoredDataToDisk();
+            renderDiagnosticsList();
+            showToast(`Diagnóstico da placa ${diag.placa} foi marcado como ${diag.status}.`, 'info');
+        }
+
+        // File handling
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                reader.onload = function(uploadEvent) {
+                    currentTempAttachments.push({
+                        name: file.name,
+                        type: file.type,
+                        size: (file.size / (1024*1024)).toFixed(1) + ' MB',
+                        data: uploadEvent.target.result
+                    });
+                    renderAttachmentsPreview();
+                };
+                reader.readAsDataURL(file);
+            }
+            e.target.value = '';
+        }
+
+        function renderAttachmentsPreview() {
+            const container = document.getElementById('attachments-preview-container');
+            container.innerHTML = '';
+            if (currentTempAttachments.length === 0) {
+                container.innerHTML = `<span class="text-xs text-zinc-500 italic">Nenhum arquivo anexado ainda.</span>`;
+                return;
+            }
+            currentTempAttachments.forEach((att, idx) => {
+                let icon = 'fa-file';
+                if (att.type.includes('image')) icon = 'fa-file-image text-emerald-400';
+                else if (att.type.includes('video')) icon = 'fa-file-video text-amber-400';
+                else if (att.type.includes('pdf')) icon = 'fa-file-pdf text-red-400';
+
+                container.innerHTML += `
+                    <div class="bg-dark border border-border px-3 py-2 rounded-xl flex items-center gap-2 text-xs">
+                        <i class="fa-solid ${icon}"></i>
+                        <span class="text-zinc-200 truncate max-w-[150px]">${att.name}</span>
+                        <button type="button" onclick="removeTempAttachment(${idx})" class="text-zinc-500 hover:text-red-400 ml-1">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function removeTempAttachment(idx) {
+            currentTempAttachments.splice(idx, 1);
+            renderAttachmentsPreview();
+        }
+
+        // Save / Update Diagnostic Form
+        function saveDiagnostic(e) {
+            e.preventDefault();
+            const id = document.getElementById('diag-id').value;
+            const placa = document.getElementById('diag-placa').value.toUpperCase();
+            const km = document.getElementById('diag-km').value;
+            const marca = document.getElementById('diag-marca').value;
+            const modelo = document.getElementById('diag-modelo').value;
+            const mecanico = document.getElementById('diag-mecanico-select').value;
+            const obs = document.getElementById('diag-obs').value;
+            const assinatura = document.getElementById('diag-signature-name').value.trim();
+
+            if (!mecanico) {
+                showToast('Selecione um mecânico responsável.', 'error');
+                return;
+            }
+
+            if (!assinatura) {
+                showToast('Informe o nome completo para a assinatura digital.', 'error');
+                return;
+            }
+
+            // Gather selected defects
+            const selectedDefects = [];
+            document.querySelectorAll('input[name="predef_defect"]:checked').forEach(cb => {
+                selectedDefects.push(cb.value);
+            });
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+
+            if (id) {
+                // Edit existing
+                const index = diagnostics.findIndex(d => d.id === id);
+                if (index !== -1) {
+                    diagnostics[index] = {
+                        ...diagnostics[index],
+                        placa, km, marca, modelo, mecanico,
+                        observacoes: obs,
+                        defeitos: selectedDefects,
+                        anexos: [...currentTempAttachments],
+                        assinatura,
+                        dataAtualizacao: dateStr
+                    };
+                }
+                showToast('Diagnóstico atualizado com sucesso!', 'success');
+            } else {
+                // Create new
+                const newDiag = {
+                    id: 'diag-' + Date.now(),
+                    placa, km, marca, modelo, mecanico,
+                    assinatura,
+                    data: dateStr,
+                    defeitos: selectedDefects,
+                    observacoes: obs,
+                    anexos: [...currentTempAttachments],
+                    status: 'Concluído'
+                };
+                diagnostics.unshift(newDiag);
+                showToast('Novo diagnóstico lançado com sucesso!', 'success');
+            }
+
+            saveStoredDataToDisk();
+            closeDiagnosticModal();
+            renderDiagnosticsList();
+        }
+
+        // Attachments Modal View
+        function openAttachmentsModalById(id) {
+            const diag = diagnostics.find(d => d.id === id);
+            if (!diag) return;
+
+            document.getElementById('att-plate-title').textContent = diag.placa;
+            const container = document.getElementById('attachments-list-container');
+            container.innerHTML = '';
+
+            if (!diag.anexos || diag.anexos.length === 0) {
+                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6">Nenhum anexo disponível para este diagnóstico.</p>`;
+            } else {
+                diag.anexos.forEach((att, idx) => {
+                    let icon = 'fa-file';
+                    if (att.type.includes('image')) icon = 'fa-file-image text-emerald-400';
+                    else if (att.type.includes('video')) icon = 'fa-file-video text-amber-400';
+                    else if (att.type.includes('pdf')) icon = 'fa-file-pdf text-red-400';
+
+                    container.innerHTML += `
+                        <div class="bg-dark border border-border p-3.5 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-zinc-900 border border-border flex items-center justify-center text-lg">
+                                    <i class="fa-solid ${icon}"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-semibold text-white">${att.name}</h4>
+                                    <span class="text-[10px] text-zinc-500">${att.size || 'Arquivo anexo'}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <a href="${att.data}" download="${att.name}" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 rounded-lg font-medium flex items-center gap-1.5 transition-colors">
+                                    <i class="fa-solid fa-download text-[10px]"></i>
+                                    <span>Baixar</span>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('attachments-modal').classList.remove('hidden');
+        }
+
+        function closeAttachmentsModal() {
+            document.getElementById('attachments-modal').classList.add('hidden');
+        }
+
+        // PDF Export for Client Sharing
+        function downloadPDF(id) {
+            const diag = diagnostics.find(d => d.id === id);
+            if (!diag) return;
+
+            const printArea = document.getElementById('print-area');
+            let defeitosListHtml = diag.defeitos.map(d => `<li>${d}</li>`).join('');
+
+            printArea.innerHTML = `
+                <div style="font-family: Arial, sans-serif; color: #111; padding: 20px;">
+                    <div style="border-bottom: 3px solid #ef4444; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h1 style="margin: 0; font-size: 22px; font-weight: bold; color: #000;">DIAGNÓSTICO AUTOMOTIVO</h1>
+                            <p style="margin: 2px 0 0 0; font-size: 14px; color: #ef4444; font-weight: bold;">${currentCompany ? currentCompany.name : 'OFICINA MECÂNICA'} - CNPJ: ${currentCompany ? currentCompany.cnpj : ''}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 14px; font-weight: bold; background: #eee; padding: 4px 10px; border-radius: 4px;">PLACA: ${diag.placa}</span>
+                        </div>
+                    </div>
+
+                    <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 4px 0;"><strong>Marca / Modelo:</strong> ${diag.marca} ${diag.modelo}</td>
+                                <td style="padding: 4px 0;"><strong>Quilometragem:</strong> ${diag.km} KM</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0;"><strong>Data da Inspeção:</strong> ${diag.data}</td>
+                                <td style="padding: 4px 0;"><strong>Mecânico Responsável:</strong> ${diag.mecanico}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 6px; color: #333;">Defeitos e Problemas Constatados</h3>
+                        <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
+                            ${defeitosListHtml || '<li>Nenhum defeito específico assinalado.</li>'}
+                        </ul>
+                    </div>
+
+                    ${diag.observacoes ? `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 6px; color: #333;">Observações Técnicas / Relato</h3>
+                        <p style="font-size: 13px; background: #fdfdfd; border: 1px solid #eee; padding: 10px; border-radius: 6px; line-height: 1.5;">${diag.observacoes}</p>
+                    </div>
+                    ` : ''}
+
+                    <div style="margin-top: 40px; border-top: 1px solid #ccc; padding-top: 20px; display: flex; justify-content: space-between; font-size: 11px; color: #666;">
+                        <div>
+                            <p>Documento gerado digitalmente pelo sistema <strong>DiagnosticoCarbral</strong>.</p>
+                            <p>Este relatório destina-se ao cliente para fins de orçamento e aprovação de reparos.</p>
+                        </div>
+                        <div style="text-align: center; width: 220px;">
+                            <div style="border-bottom: 1px solid #333; height: 35px; margin-bottom: 5px;"></div>
+                            <span style="font-weight: bold; display: block;">${diag.assinatura}</span>
+                            <span>Assinatura do Mecânico Responsável</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            window.print();
+            showToast('PDF gerado para compartilhamento!', 'success');
+        }
+
+        // Toast Notification system
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bg = 'bg-zinc-900 border-zinc-700 text-white';
+            let icon = 'fa-circle-check text-emerald-400';
+            if (type === 'error') {
+                bg = 'bg-red-950 border-red-800 text-white';
+                icon = 'fa-triangle-exclamation text-red-400';
+            } else if (type === 'info') {
+                bg = 'bg-zinc-900 border-zinc-700 text-white';
+                icon = 'fa-circle-info text-sky-400';
+            }
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-xl text-xs font-medium transition-all transform translate-y-2 opacity-0 ${bg}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
