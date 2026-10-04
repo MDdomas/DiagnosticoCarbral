@@ -377,7 +377,7 @@
                     </h4>
                     
                     <div class="border-2 border-dashed border-border hover:border-red-500/50 rounded-xl p-4 text-center transition-colors bg-dark/50">
-                        <input type="file" id="diag-files" multiple accept="image/*,video/*,application/pdf" class="hidden" onchange="handleFileSelect(event)">
+                        <input type="file" id="diag-files" multiple accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" class="hidden" onchange="handleFileSelect(event)">
                         <label for="diag-files" class="cursor-pointer flex flex-col items-center">
                             <i class="fa-solid fa-cloud-arrow-up text-2xl text-zinc-400 mb-2"></i>
                             <span class="text-xs font-medium text-zinc-300">Clique para anexar arquivos (Fotos, Vídeos ou PDFs)</span>
@@ -479,7 +479,13 @@
     <script>
         const SUPABASE_URL = "https://eyricdzytukgqbighvky.supabase.co";
         const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PATJFNJp5oVWz10nSyEseg_fArltTfn";
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: false
+            }
+        });
 
         // Companies data storage
         let companies = [];
@@ -487,6 +493,7 @@
         let diagnostics = [];
         let mechanics = [];
         let currentTempAttachments = [];
+        let savingDiagnostic = false;
         let partsCatalog = [];
         let defectsCatalog = [];
         let servicesCatalog = [];
@@ -729,6 +736,7 @@
                     modelo: row.modelo,
                     ano: row.ano || '',
                     pecas: row.pecas || [],
+                    servicos: row.servicos || [],
                     mecanico: row.mecanico,
                     assinatura: row.assinatura,
                     data: row.data,
@@ -798,7 +806,17 @@
 
         async function checkSession() {
             try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
+                // Em uma atualização da página, o Supabase pode precisar de um instante
+                // para restaurar a sessão persistida. Tentamos duas vezes antes de mostrar o login.
+                let session = null;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    const { data, error } = await supabaseClient.auth.getSession();
+                    if (error) throw error;
+                    session = data?.session || null;
+                    if (session) break;
+                    await new Promise(resolve => setTimeout(resolve, 350));
+                }
+
                 if (!session) {
                     showView('login');
                     return;
@@ -811,7 +829,8 @@
                     .single();
 
                 if (error || !company) {
-                    await supabaseClient.auth.signOut();
+                    // Não encerramos a sessão por erro temporário de rede/banco.
+                    console.error('Empresa não localizada para a sessão:', error);
                     showView('login');
                     return;
                 }
@@ -983,9 +1002,11 @@
         function renderDiagnosticsList(filteredList = null) {
             const container = document.getElementById('diagnostics-container');
             const emptyState = document.getElementById('empty-state');
-            const list = filteredList || diagnostics;
+            const sourceList = filteredList || diagnostics;
+            // Diagnósticos cancelados não aparecem na aba principal nem na contagem.
+            const list = sourceList.filter(d => d.status !== 'Cancelado');
 
-            document.getElementById('total-count').textContent = diagnostics.length;
+            document.getElementById('total-count').textContent = diagnostics.filter(d => d.status !== 'Cancelado').length;
             container.innerHTML = '';
 
             if (list.length === 0) {
@@ -1339,35 +1360,72 @@
             document.getElementById('view-diagnostic-modal').classList.add('hidden');
         }
 
-        // Cancel Diagnostic Status
+        // Cancelar diagnóstico: exige duas confirmações e remove do histórico.
         async function cancelDiagnostic(id) {
             const diag = diagnostics.find(d => d.id === id);
-            if (!diag) return;
+            if (!diag || !currentCompany) return;
 
-            const newStatus = diag.status === 'Cancelado' ? 'Concluído' : 'Cancelado';
-            const { error } = await supabaseClient
-                .from('diagnostics')
-                .update({ status: newStatus, data_atualizacao: new Date().toISOString() })
-                .eq('id', id)
-                .eq('company_id', currentCompany.id);
-
-            if (error) {
-                console.error(error);
-                showToast('Não foi possível atualizar o status.', 'error');
+            if (diag.status === 'Cancelado') {
+                showToast('Este diagnóstico já foi cancelado.', 'info');
                 return;
             }
 
-            diag.status = newStatus;
-            diag.dataAtualizacao = new Date().toISOString();
-            renderDiagnosticsList();
-            showToast(`Diagnóstico da placa ${diag.placa} foi marcado como ${diag.status}.`, 'info');
+            const firstConfirm = window.confirm(
+                `Tem certeza que deseja cancelar o diagnóstico da placa ${diag.placa}?\n\nEle será removido do histórico.`
+            );
+            if (!firstConfirm) return;
+
+            const secondConfirm = window.confirm(
+                `SEGUNDA CONFIRMAÇÃO\n\nConfirma definitivamente o cancelamento do diagnóstico ${diag.placa}?\n\nEsta ação removerá o registro do histórico e não poderá ser desfeita.`
+            );
+            if (!secondConfirm) return;
+
+            try {
+                // Remove os arquivos do Storage primeiro.
+                const attachments = diag.anexos || [];
+                const paths = attachments.map(a => a.storage_path).filter(Boolean);
+                if (paths.length) {
+                    const { error: storageError } = await supabaseClient.storage
+                        .from('diagnostic-attachments')
+                        .remove(paths);
+                    if (storageError) throw storageError;
+                }
+
+                // Remove os registros dos anexos.
+                const { error: attachmentDbError } = await supabaseClient
+                    .from('diagnostic_attachments')
+                    .delete()
+                    .eq('diagnostic_id', id)
+                    .eq('company_id', currentCompany.id);
+                if (attachmentDbError) throw attachmentDbError;
+
+                // Finalmente remove o diagnóstico do histórico.
+                const { error: diagError } = await supabaseClient
+                    .from('diagnostics')
+                    .delete()
+                    .eq('id', id)
+                    .eq('company_id', currentCompany.id);
+                if (diagError) throw diagError;
+
+                diagnostics = diagnostics.filter(d => d.id !== id);
+                renderDiagnosticsList();
+                showToast(`Diagnóstico ${diag.placa} cancelado e removido do histórico.`, 'info');
+            } catch (error) {
+                console.error('Erro ao cancelar diagnóstico:', error);
+                showToast('Não foi possível cancelar o diagnóstico. Nenhum registro foi removido.', 'error');
+            }
         }
 
         // File handling
         function handleFileSelect(e) {
             const files = e.target.files;
+            const MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024; // 50 MB por arquivo
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
+                if (file.size > MAX_ATTACHMENT_SIZE) {
+                    showToast(`O arquivo "${file.name}" ultrapassa o limite de 50 MB.`, 'error');
+                    continue;
+                }
                 currentTempAttachments.push({
                     name: file.name,
                     type: file.type,
@@ -1465,7 +1523,16 @@
         // Save / Update Diagnostic Form
         async function saveDiagnostic(e) {
             e.preventDefault();
-            if (!currentCompany) return;
+            if (!currentCompany || savingDiagnostic) return;
+
+            savingDiagnostic = true;
+            const submitButton = document.querySelector('#diagnostic-form button[type="submit"]');
+            const originalButtonHtml = submitButton ? submitButton.innerHTML : '';
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.classList.add('opacity-60', 'cursor-not-allowed');
+                submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Salvando...</span>';
+            }
 
             const id = document.getElementById('diag-id').value;
             const placa = document.getElementById('diag-placa').value.toUpperCase();
@@ -1477,35 +1544,25 @@
             const obs = document.getElementById('diag-obs').value;
             const assinatura = document.getElementById('diag-signature-name').value.trim();
 
-            if (!mecanico) {
-                showToast('Selecione um mecânico responsável.', 'error');
-                return;
-            }
-
-            if (!assinatura) {
-                showToast('Informe o nome completo para a assinatura digital.', 'error');
-                return;
-            }
-
-            const selectedDefects = [];
-            document.querySelectorAll('input[name="predef_defect"]:checked').forEach(cb => selectedDefects.push(cb.value));
-            const selectedServices = [];
-            document.querySelectorAll('input[name="catalog_service"]:checked').forEach(cb => selectedServices.push(cb.value));
-            const selectedParts = [];
-            document.querySelectorAll('input[name="catalog_part"]:checked').forEach(cb => selectedParts.push(cb.value));
-
-            if (selectedDefects.length === 0) { showToast('Selecione pelo menos 1 defeito encontrado.', 'error'); return; }
-            if (selectedServices.length === 0) { showToast('Selecione pelo menos 1 serviço a ser efetuado.', 'error'); return; }
-            if (selectedParts.length === 0) { showToast('Selecione pelo menos 1 peça a ser substituída.', 'error'); return; }
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-
             try {
-                let diagnosticId = id;
+                if (!mecanico) throw new Error('Selecione um mecânico responsável.');
+                if (!assinatura) throw new Error('Informe o nome completo para a assinatura digital.');
+
+                const selectedDefects = selectedValues('predef_defect');
+                const selectedServices = selectedValues('catalog_service');
+                const selectedParts = selectedValues('catalog_part');
+
+                if (selectedDefects.length === 0) throw new Error('Selecione pelo menos 1 defeito encontrado.');
+                if (selectedServices.length === 0) throw new Error('Selecione pelo menos 1 serviço a ser efetuado.');
+                if (selectedParts.length === 0) throw new Error('Selecione pelo menos 1 peça a ser substituída.');
+
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
                 const existing = id ? diagnostics.find(d => d.id === id) : null;
+                const diagnosticId = id || 'diag-' + Date.now();
 
                 const row = {
-                    id: diagnosticId || 'diag-' + Date.now(),
+                    id: diagnosticId,
                     company_id: currentCompany.id,
                     placa, km, marca, modelo, ano, mecanico, assinatura,
                     pecas: selectedParts,
@@ -1516,31 +1573,71 @@
                     status: existing?.status || 'Concluído',
                     data_atualizacao: id ? new Date().toISOString() : null
                 };
-                diagnosticId = row.id;
 
+                // Primeiro grava o diagnóstico. O botão fica bloqueado para impedir lançamentos duplicados.
                 const { error: diagError } = await supabaseClient
                     .from('diagnostics')
                     .upsert(row, { onConflict: 'id' });
                 if (diagError) throw diagError;
 
-                // Remove from UI any attachments that are no longer selected.
+                // Remove do Storage/BD somente os anexos que o usuário retirou da edição.
                 const originalAttachments = existing?.anexos || [];
                 const keptExistingIds = new Set(currentTempAttachments.filter(a => !a.isNew && a.id).map(a => a.id));
                 const removed = originalAttachments.filter(a => a.id && !keptExistingIds.has(a.id));
 
                 for (const att of removed) {
                     if (att.storage_path) {
-                        await supabaseClient.storage.from('diagnostic-attachments').remove([att.storage_path]);
+                        const { error: removeStorageError } = await supabaseClient.storage
+                            .from('diagnostic-attachments').remove([att.storage_path]);
+                        if (removeStorageError) console.warn('Não foi possível remover arquivo antigo:', removeStorageError);
                     }
-                    await supabaseClient.from('diagnostic_attachments').delete().eq('id', att.id).eq('company_id', currentCompany.id);
+                    const { error: removeDbError } = await supabaseClient
+                        .from('diagnostic_attachments').delete().eq('id', att.id).eq('company_id', currentCompany.id);
+                    if (removeDbError) console.warn('Não foi possível remover registro do anexo:', removeDbError);
                 }
 
-                const finalAttachments = await uploadDiagnosticAttachments(diagnosticId, currentTempAttachments);
+                // Anexos são tratados sem invalidar o lançamento do diagnóstico.
+                // Se um upload falhar, o diagnóstico continua salvo e o usuário recebe aviso específico.
+                const attachmentErrors = [];
+                const finalAttachments = [];
+                for (const att of currentTempAttachments) {
+                    if (!att.isNew || !att.file) {
+                        finalAttachments.push({ id: att.id, name: att.name, type: att.type, size: att.size, storage_path: att.storage_path });
+                        continue;
+                    }
+
+                    try {
+                        const safeName = att.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                        const path = `${currentCompany.id}/${diagnosticId}/${Date.now()}-${safeName}`;
+                        const { error: uploadError } = await supabaseClient.storage
+                            .from('diagnostic-attachments')
+                            .upload(path, att.file, { upsert: false, contentType: att.type || 'application/octet-stream' });
+                        if (uploadError) throw uploadError;
+
+                        const attachmentRow = {
+                            diagnostic_id: diagnosticId,
+                            company_id: currentCompany.id,
+                            name: att.name,
+                            type: att.type || 'application/octet-stream',
+                            size: att.size,
+                            storage_path: path
+                        };
+                        const { data: attachmentData, error: dbError } = await supabaseClient
+                            .from('diagnostic_attachments').insert(attachmentRow).select('*').single();
+                        if (dbError) {
+                            await supabaseClient.storage.from('diagnostic-attachments').remove([path]);
+                            throw dbError;
+                        }
+                        finalAttachments.push({ id: attachmentData.id, name: attachmentData.name, type: attachmentData.type, size: attachmentData.size, storage_path: attachmentData.storage_path });
+                    } catch (attachmentError) {
+                        console.error('Falha ao anexar arquivo:', att.name, attachmentError);
+                        attachmentErrors.push(`${att.name}: ${attachmentError?.message || 'erro desconhecido'}`);
+                    }
+                }
 
                 const localDiagnostic = {
                     id: diagnosticId, placa, km, marca, modelo, ano, mecanico, assinatura,
-                    pecas: selectedParts,
-                    servicos: selectedServices,
+                    pecas: selectedParts, servicos: selectedServices,
                     data: row.data, defeitos: selectedDefects, observacoes: obs,
                     anexos: finalAttachments, status: row.status,
                     dataAtualizacao: row.data_atualizacao
@@ -1549,17 +1646,28 @@
                 if (id) {
                     const index = diagnostics.findIndex(d => d.id === id);
                     if (index !== -1) diagnostics[index] = localDiagnostic;
-                    showToast('Diagnóstico atualizado com sucesso!', 'success');
+                    showToast(attachmentErrors.length
+                        ? `Diagnóstico atualizado. ${attachmentErrors.length} anexo(s) não puderam ser enviados: ${attachmentErrors.slice(0,2).join(' | ')}`
+                        : 'Diagnóstico atualizado com sucesso!', attachmentErrors.length ? 'info' : 'success');
                 } else {
                     diagnostics.unshift(localDiagnostic);
-                    showToast('Novo diagnóstico lançado com sucesso!', 'success');
+                    showToast(attachmentErrors.length
+                        ? `Diagnóstico lançado. ${attachmentErrors.length} anexo(s) não puderam ser enviados: ${attachmentErrors.slice(0,2).join(' | ')}`
+                        : 'Novo diagnóstico lançado com sucesso!', attachmentErrors.length ? 'info' : 'success');
                 }
 
                 closeDiagnosticModal();
                 renderDiagnosticsList();
             } catch (error) {
                 console.error('Erro ao salvar diagnóstico:', error);
-                showToast('Não foi possível salvar o diagnóstico. Verifique o banco e o Storage.', 'error');
+                showToast(error.message || 'Não foi possível salvar o diagnóstico. Verifique o banco.', 'error');
+            } finally {
+                savingDiagnostic = false;
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('opacity-60', 'cursor-not-allowed');
+                    submitButton.innerHTML = originalButtonHtml;
+                }
             }
         }
 
