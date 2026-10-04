@@ -285,10 +285,11 @@
                         <i class="fa-solid fa-car"></i> Informações do Veículo & Mecânico Responsável
                     </h4>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="md:col-span-2">
                             <label class="block text-xs font-medium text-zinc-300 mb-1">Placa do Veículo *</label>
                             <input type="text" id="diag-placa" required placeholder="ABC-1D23" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm uppercase text-zinc-200 focus:outline-none focus:border-red-500">
+                            <p class="text-[10px] text-zinc-500 mt-1">A placa será registrada no diagnóstico. Marca, modelo e ano são selecionados manualmente.</p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-zinc-300 mb-1">Quilometragem (KM) *</label>
@@ -296,32 +297,34 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-300 mb-1">Ano do Veículo *</label>
+                            <input type="number" min="1900" max="2100" id="diag-ano" required placeholder="Ex: 2021" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                        </div>
+
                         <div>
                             <label class="block text-xs font-medium text-zinc-300 mb-1">Marca do Veículo *</label>
                             <select id="diag-marca" required onchange="onBrandChange()" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
-                                <option value="">Selecione a Marca...</option>
-                                <option value="Volkswagen">Volkswagen</option>
-                                <option value="Chevrolet">Chevrolet</option>
-                                <option value="Fiat">Fiat</option>
-                                <option value="Toyota">Toyota</option>
-                                <option value="Hyundai">Hyundai</option>
-                                <option value="Jeep">Jeep</option>
-                                <option value="Honda">Honda</option>
-                                <option value="Renault">Renault</option>
-                                <option value="Ford">Ford</option>
-                                <option value="Outra">Outra (Digitar)</option>
+                                <option value="">Carregando marcas...</option>
                             </select>
                         </div>
                         <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <label class="block text-xs font-medium text-zinc-300">Modelo do Veículo *</label>
-                                <button type="button" onclick="aiHelperModel()" class="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1 font-medium">
-                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Sugerir via IA
-                                </button>
-                            </div>
-                            <input type="text" id="diag-modelo" required placeholder="Ex: Gol, Corolla, Onix..." class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                            <label class="block text-xs font-medium text-zinc-300 mb-1">Modelo do Veículo *</label>
+                            <select id="diag-modelo" required onchange="onModelChange()" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                                <option value="">Selecione a marca primeiro...</option>
+                            </select>
                         </div>
+                    </div>
+                    <div class="flex items-center justify-end">
+                        <button type="button" onclick="openVehicleCatalogForm()" class="text-[10px] bg-dark border border-border text-zinc-300 hover:text-white hover:border-red-500 px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors">
+                            <i class="fa-solid fa-plus"></i> Cadastrar nova marca e modelo
+                        </button>
+                    </div>
+                    <div id="new-vehicle-form" class="hidden bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                        <div><label class="block text-[10px] text-zinc-400 mb-1">Nova marca</label><input id="new-brand-name" type="text" placeholder="Ex: BYD" class="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div>
+                        <div><label class="block text-[10px] text-zinc-400 mb-1">Novo modelo</label><input id="new-model-name" type="text" placeholder="Ex: Dolphin Mini" class="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div>
+                        <button type="button" onclick="addVehicleCatalogItem()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl">Salvar</button>
                     </div>
 
                     <div>
@@ -333,26 +336,38 @@
                     </div>
                 </div>
 
-                <!-- Defeitos e Problemas -->
-                <div class="space-y-4 pt-4 border-t border-border">
+                <!-- Relatórios obrigatórios do diagnóstico -->
+                <div class="space-y-5 pt-4 border-t border-border">
                     <div class="flex items-center justify-between">
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2">
-                            <i class="fa-solid fa-triangle-exclamation"></i> Relatório de Defeitos & Peças
-                        </h4>
-                        <button type="button" onclick="aiHelperDefects()" class="text-[10px] bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium transition-colors">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> Sugerir Defeitos Comuns (IA)
-                        </button>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2"><i class="fa-solid fa-clipboard-check"></i> Relatórios do Diagnóstico</h4>
+                        <span class="text-[10px] text-zinc-500">Selecione ao menos 1 item em cada relatório</span>
                     </div>
 
-                    <!-- Defeitos Pré-cadastrados Checkboxes -->
-                    <div class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2" id="predef-list">
-                        <!-- Populated by JS -->
+                    <div class="bg-card border border-border rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> 1. Defeitos Encontrados</h4>
+                            <span id="defect-selection-count" class="text-[10px] text-zinc-500">0 selecionados</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i><input id="defect-search" oninput="filterCatalogList('defect')" type="text" placeholder="Pesquisar defeito..." class="w-full bg-dark border border-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div>
+                            <button type="button" onclick="addCatalogItem('defect')" class="bg-dark border border-border hover:border-red-500 text-zinc-300 hover:text-white px-3 rounded-xl" title="Cadastrar novo defeito"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                        <div id="predef-list" class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-medium text-zinc-300 mb-1">Relato Adicional / Observações Manuais</label>
-                        <textarea id="diag-obs" rows="3" placeholder="Descreva falhas específicas, barulhos relatados pelo cliente ou observações técnicas..." class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500"></textarea>
+                    <div class="bg-card border border-border rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2"><i class="fa-solid fa-screwdriver-wrench"></i> 2. Serviços a Serem Efetuados</h4><span id="service-selection-count" class="text-[10px] text-zinc-500">0 selecionados</span></div>
+                        <div class="flex gap-2"><div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i><input id="service-search" oninput="filterCatalogList('service')" type="text" placeholder="Pesquisar serviço..." class="w-full bg-dark border border-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div><button type="button" onclick="addCatalogItem('service')" class="bg-dark border border-border hover:border-red-500 text-zinc-300 hover:text-white px-3 rounded-xl" title="Cadastrar novo serviço"><i class="fa-solid fa-plus"></i></button></div>
+                        <div id="services-list" class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
                     </div>
+
+                    <div class="bg-card border border-border rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2"><i class="fa-solid fa-gears"></i> 3. Peças a Serem Substituídas</h4><span id="part-selection-count" class="text-[10px] text-zinc-500">0 selecionadas</span></div>
+                        <div class="flex gap-2"><div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i><input id="part-search" oninput="filterCatalogList('part')" type="text" placeholder="Pesquisar peça..." class="w-full bg-dark border border-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div><button type="button" onclick="addCatalogItem('part')" class="bg-dark border border-border hover:border-red-500 text-zinc-300 hover:text-white px-3 rounded-xl" title="Cadastrar nova peça"><i class="fa-solid fa-plus"></i></button></div>
+                        <div id="parts-list" class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
+                    </div>
+
+                    <div><label class="block text-xs font-medium text-zinc-300 mb-1">Relato Adicional / Observações Manuais</label><textarea id="diag-obs" rows="3" placeholder="Descreva falhas específicas, barulhos relatados pelo cliente ou observações técnicas..." class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500"></textarea></div>
                 </div>
 
                 <!-- Anexos (PDF, Imagens, Vídeos) -->
@@ -472,6 +487,10 @@
         let diagnostics = [];
         let mechanics = [];
         let currentTempAttachments = [];
+        let partsCatalog = [];
+        let defectsCatalog = [];
+        let servicesCatalog = [];
+        let vehicleCatalog = [];
 
         // Common pre-registered defects
         const COMMON_DEFECTS = [
@@ -665,6 +684,24 @@
                     .order('created_at', { ascending: true });
                 if (mechError) throw mechError;
 
+                const [{ data: partRows, error: partError }, { data: defectRows, error: defectError }, { data: serviceRows, error: serviceError }, { data: vehicleRows, error: vehicleError }] = await Promise.all([
+                    supabaseClient.from('parts_catalog').select('*').order('name', { ascending: true }),
+                    supabaseClient.from('defects_catalog').select('*').order('name', { ascending: true }),
+                    supabaseClient.from('service_catalog').select('*').order('name', { ascending: true }),
+                    supabaseClient.from('vehicle_catalog').select('*').order('marca', { ascending: true }).order('modelo', { ascending: true })
+                ]);
+                if (partError) throw partError;
+                if (defectError) throw defectError;
+                if (serviceError) throw serviceError;
+                if (vehicleError) throw vehicleError;
+
+                partsCatalog = partRows || [];
+                defectsCatalog = defectRows || [];
+                servicesCatalog = serviceRows || [];
+                vehicleCatalog = vehicleRows || [];
+                populateVehicleBrands();
+                renderCatalogLists();
+
                 const { data: attachmentRows, error: attachmentError } = await supabaseClient
                     .from('diagnostic_attachments')
                     .select('*')
@@ -690,6 +727,8 @@
                     km: row.km,
                     marca: row.marca,
                     modelo: row.modelo,
+                    ano: row.ano || '',
+                    pecas: row.pecas || [],
                     mecanico: row.mecanico,
                     assinatura: row.assinatura,
                     data: row.data,
@@ -732,6 +771,8 @@
                 km: '52000',
                 marca: 'Volkswagen',
                 modelo: 'Gol 1.6',
+                ano: '2020',
+                pecas: ['Pastilha de freio dianteira', 'Óleo do motor', 'Filtro de óleo'],
                 mecanico: 'Carlos Silva',
                 assinatura: 'Carlos Alberto da Silva',
                 data: '03/10/2026 08:30',
@@ -1004,6 +1045,15 @@
                                 </div>
                             </div>
 
+                            <div class="mb-3">
+                                <span class="text-[10px] uppercase font-semibold text-zinc-500 block mb-1">Serviços:</span>
+                                <div class="flex flex-wrap gap-1">${(diag.servicos || []).slice(0,3).map(x => `<span class="inline-block bg-zinc-900 border border-border text-zinc-300 text-[10px] px-2 py-0.5 rounded-md">${escapeHtml(x)}</span>`).join('')}</div>
+                            </div>
+                            <div class="mb-4">
+                                <span class="text-[10px] uppercase font-semibold text-zinc-500 block mb-1">Peças:</span>
+                                <div class="flex flex-wrap gap-1">${(diag.pecas || []).slice(0,3).map(x => `<span class="inline-block bg-zinc-900 border border-border text-zinc-300 text-[10px] px-2 py-0.5 rounded-md">${escapeHtml(x)}</span>`).join('')}</div>
+                            </div>
+
                             ${diag.observacoes ? `<p class="text-xs text-zinc-400 italic bg-dark p-2.5 rounded-xl border border-border/60 mb-4 line-clamp-2">"${diag.observacoes}"</p>` : ''}
                         </div>
 
@@ -1044,29 +1094,6 @@
             renderDiagnosticsList(filtered);
         }
 
-        // AI Helper for Vehicle Model filtering by Brand
-        function onBrandChange() {
-            const brand = document.getElementById('diag-marca').value;
-            const modelInput = document.getElementById('diag-modelo');
-            if (AI_MODELS_MAP[brand] && AI_MODELS_MAP[brand].length > 0) {
-                modelInput.placeholder = `Ex: ${AI_MODELS_MAP[brand][0]}, ${AI_MODELS_MAP[brand][1]}`;
-            } else {
-                modelInput.placeholder = `Ex: Modelo do veículo`;
-            }
-        }
-
-        function aiHelperModel() {
-            const brand = document.getElementById('diag-marca').value;
-            if (!brand) {
-                showToast('Selecione uma marca primeiro para a IA sugerir modelos.', 'error');
-                return;
-            }
-            const models = AI_MODELS_MAP[brand] || ["Modelo Padrão"];
-            const randomModel = models[Math.floor(Math.random() * models.length)];
-            document.getElementById('diag-modelo').value = randomModel;
-            showToast(`IA sugeriu o modelo: ${randomModel}`, 'success');
-        }
-
         function aiHelperDefects() {
             const checkboxes = document.querySelectorAll('input[name="predef_defect"]');
             checkboxes.forEach((cb, index) => {
@@ -1077,6 +1104,121 @@
             showToast('IA selecionou defeitos comuns com base no histórico!', 'success');
         }
 
+        // Catálogos de veículos, defeitos, serviços e peças
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+        }
+
+        function populateVehicleBrands(selectedBrand = '') {
+            const select = document.getElementById('diag-marca');
+            if (!select) return;
+            const brands = [...new Set(vehicleCatalog.map(v => v.marca).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+            select.innerHTML = '<option value="">Selecione a Marca...</option>' + brands.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+            select.innerHTML += '<option value="Outra">Outra</option>';
+            if (selectedBrand) {
+                ensureBrandOption(selectedBrand);
+                select.value = selectedBrand;
+                onBrandChange();
+            }
+        }
+
+        function ensureBrandOption(brand) {
+            const select = document.getElementById('diag-marca');
+            if (!select || !brand) return;
+            const exists = [...select.options].some(o => o.value.toLowerCase() === brand.toLowerCase());
+            if (!exists) {
+                const opt = document.createElement('option'); opt.value = brand; opt.textContent = brand;
+                select.insertBefore(opt, select.querySelector('option[value="Outra"]') || null);
+            }
+            select.value = brand;
+        }
+
+        function onBrandChange(selectedModel = '') {
+            const brand = document.getElementById('diag-marca').value;
+            const modelSelect = document.getElementById('diag-modelo');
+            if (!modelSelect) return;
+            const models = vehicleCatalog.filter(v => v.marca === brand).sort((a,b) => a.modelo.localeCompare(b.modelo, 'pt-BR'));
+            modelSelect.innerHTML = brand ? '<option value="">Selecione o Modelo...</option>' : '<option value="">Selecione a marca primeiro...</option>';
+            modelSelect.innerHTML += models.map(v => `<option value="${escapeHtml(v.modelo)}">${escapeHtml(v.modelo)}</option>`).join('');
+            if (selectedModel) {
+                const exists = models.some(v => v.modelo.toLowerCase() === selectedModel.toLowerCase());
+                if (!exists) modelSelect.innerHTML += `<option value="${escapeHtml(selectedModel)}">${escapeHtml(selectedModel)} (cadastrado anteriormente)</option>`;
+                modelSelect.value = selectedModel;
+            }
+        }
+
+        function onModelChange() {}
+
+        function openVehicleCatalogForm() {
+            const box = document.getElementById('new-vehicle-form');
+            box.classList.toggle('hidden');
+            if (!box.classList.contains('hidden')) document.getElementById('new-brand-name').focus();
+        }
+
+        async function addVehicleCatalogItem() {
+            if (!currentCompany) return;
+            const marca = document.getElementById('new-brand-name').value.trim();
+            const modelo = document.getElementById('new-model-name').value.trim();
+            if (!marca || !modelo) { showToast('Informe a marca e o modelo.', 'error'); return; }
+            const exists = vehicleCatalog.some(v => v.marca.toLowerCase() === marca.toLowerCase() && v.modelo.toLowerCase() === modelo.toLowerCase());
+            if (exists) { showToast('Essa marca e modelo já estão cadastrados.', 'info'); return; }
+            const { data, error } = await supabaseClient.from('vehicle_catalog').insert({company_id: currentCompany.id, marca, modelo}).select('*').single();
+            if (error) { console.error(error); showToast('Não foi possível salvar o veículo.', 'error'); return; }
+            vehicleCatalog.push(data);
+            document.getElementById('new-brand-name').value = '';
+            document.getElementById('new-model-name').value = '';
+            document.getElementById('new-vehicle-form').classList.add('hidden');
+            populateVehicleBrands(marca); onBrandChange(modelo);
+            showToast('Marca e modelo cadastrados com sucesso!', 'success');
+        }
+
+        function selectedValues(name) { return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(x => x.value); }
+
+        function renderCatalogLists(selectedDefects = [], selectedServices = [], selectedParts = []) {
+            const defectContainer = document.getElementById('predef-list');
+            const serviceContainer = document.getElementById('services-list');
+            const partContainer = document.getElementById('parts-list');
+            if (!defectContainer || !serviceContainer || !partContainer) return;
+            const qDef = (document.getElementById('defect-search')?.value || '').toLowerCase().trim();
+            const qSvc = (document.getElementById('service-search')?.value || '').toLowerCase().trim();
+            const qPart = (document.getElementById('part-search')?.value || '').toLowerCase().trim();
+            const filter = (item,q) => !q || `${item.name} ${item.category || ''}`.toLowerCase().includes(q);
+            const label = (item,name,selected) => `<label class="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="${name}" value="${escapeHtml(item.name)}" ${selected.includes(item.name) ? 'checked' : ''} onchange="updateSelectionCounts()" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span><span>${escapeHtml(item.name)}</span>${item.category ? `<small class="block text-[9px] text-zinc-500">${escapeHtml(item.category)}</small>` : ''}</span></label>`;
+            const defs = defectsCatalog.filter(x => filter(x,qDef));
+            const svcs = servicesCatalog.filter(x => filter(x,qSvc));
+            const parts = partsCatalog.filter(x => filter(x,qPart));
+            defectContainer.innerHTML = defs.length ? defs.map(x => label(x,'predef_defect',selectedDefects)).join('') : '<span class="text-xs text-zinc-500">Nenhum defeito encontrado.</span>';
+            serviceContainer.innerHTML = svcs.length ? svcs.map(x => label(x,'catalog_service',selectedServices)).join('') : '<span class="text-xs text-zinc-500">Nenhum serviço encontrado.</span>';
+            partContainer.innerHTML = parts.length ? parts.map(x => label(x,'catalog_part',selectedParts)).join('') : '<span class="text-xs text-zinc-500">Nenhuma peça encontrada.</span>';
+            updateSelectionCounts();
+        }
+
+        function filterCatalogList() {
+            renderCatalogLists(selectedValues('predef_defect'), selectedValues('catalog_service'), selectedValues('catalog_part'));
+        }
+
+        function updateSelectionCounts() {
+            const d = selectedValues('predef_defect').length, s = selectedValues('catalog_service').length, p = selectedValues('catalog_part').length;
+            const set = (id,text) => { const el=document.getElementById(id); if(el) el.textContent=text; };
+            set('defect-selection-count', `${d} selecionado${d===1?'':'s'}`); set('service-selection-count', `${s} selecionado${s===1?'':'s'}`); set('part-selection-count', `${p} selecionada${p===1?'':'s'}`);
+        }
+
+        async function addCatalogItem(type) {
+            if (!currentCompany) return;
+            const config = {defect:['defect-search','defects_catalog','defectsCatalog','Defeito'],service:['service-search','service_catalog','servicesCatalog','Serviço'],part:['part-search','parts_catalog','partsCatalog','Peça']}[type];
+            const query = document.getElementById(config[0]).value.trim();
+            const name = prompt(`Digite o nome do novo ${config[3].toLowerCase()}:`, query);
+            if (!name || !name.trim()) return;
+            const clean = name.trim(), list = type === 'defect' ? defectsCatalog : type === 'service' ? servicesCatalog : partsCatalog;
+            if (list.some(item => item.name.toLowerCase() === clean.toLowerCase())) { showToast('Esse item já está cadastrado.', 'info'); return; }
+            const {data,error}=await supabaseClient.from(config[1]).insert({company_id:currentCompany.id,name:clean,category:'Personalizado'}).select('*').single();
+            if(error){console.error(error);showToast(`Não foi possível salvar o ${config[3].toLowerCase()}.`,'error');return;}
+            list.push(data); list.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+            const selectedD=selectedValues('predef_defect'), selectedS=selectedValues('catalog_service'), selectedP=selectedValues('catalog_part');
+            if(type==='defect') selectedD.push(clean); if(type==='service') selectedS.push(clean); if(type==='part') selectedP.push(clean);
+            renderCatalogLists(selectedD,selectedS,selectedP); document.getElementById(config[0]).value=''; showToast(`${config[3]} salvo no sistema.`,'success');
+        }
+
         // New / Edit Modal Actions
         function openNewDiagnosticModal() {
             document.getElementById('modal-title').textContent = "Novo Diagnóstico de Veículo";
@@ -1084,6 +1226,8 @@
             document.getElementById('diagnostic-form').reset();
             currentTempAttachments = [];
             populateMechanicsSelect();
+            populateVehicleBrands();
+            renderCatalogLists();
             renderAttachmentsPreview();
             document.getElementById('diagnostic-modal').classList.remove('hidden');
         }
@@ -1100,18 +1244,16 @@
             document.getElementById('diag-id').value = diag.id;
             document.getElementById('diag-placa').value = diag.placa;
             document.getElementById('diag-km').value = diag.km;
-            document.getElementById('diag-marca').value = diag.marca || '';
-            document.getElementById('diag-modelo').value = diag.modelo;
+            populateVehicleBrands(diag.marca || '');
+            onBrandChange(diag.modelo || '');
+            document.getElementById('diag-ano').value = diag.ano || '';
             document.getElementById('diag-obs').value = diag.observacoes || '';
             document.getElementById('diag-signature-name').value = diag.assinatura || '';
 
             populateMechanicsSelect(diag.mecanico);
 
             // Check predef defects
-            const checkboxes = document.querySelectorAll('input[name="predef_defect"]');
-            checkboxes.forEach(cb => {
-                cb.checked = diag.defeitos.includes(cb.value);
-            });
+            renderCatalogLists(diag.defeitos || [], diag.servicos || [], diag.pecas || []);
 
             currentTempAttachments = diag.anexos ? [...diag.anexos] : [];
             renderAttachmentsPreview();
@@ -1136,6 +1278,7 @@
                     <div class="text-right">
                         <span class="bg-dark border border-border px-3 py-1 rounded-xl text-xs font-mono font-bold text-zinc-200">${diag.placa}</span>
                         <span class="text-xs text-zinc-400 block mt-1">${diag.km} KM</span>
+                        <span class="text-xs text-zinc-400 block mt-1">Ano ${diag.ano || '—'}</span>
                     </div>
                 </div>
 
@@ -1154,6 +1297,20 @@
                     <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Defeitos Constatados</h4>
                     <ul class="list-disc pl-5 space-y-1 text-xs bg-dark p-3 rounded-xl border border-border">
                         ${defeitosList || '<span class="text-zinc-500 italic">Nenhum defeito registrado</span>'}
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Serviços a Serem Efetuados</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs bg-dark p-3 rounded-xl border border-border">
+                        ${(diag.servicos || []).map(s => `<li class="text-zinc-300">${escapeHtml(s)}</li>`).join('') || '<span class="text-zinc-500 italic">Nenhum serviço selecionado</span>'}
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Peças a Trocar</h4>
+                    <ul class="list-disc pl-5 space-y-1 text-xs bg-dark p-3 rounded-xl border border-border">
+                        ${(diag.pecas || []).map(p => `<li class="text-zinc-300">${escapeHtml(p)}</li>`).join('') || '<span class="text-zinc-500 italic">Nenhuma peça selecionada</span>'}
                     </ul>
                 </div>
 
@@ -1315,6 +1472,7 @@
             const km = document.getElementById('diag-km').value;
             const marca = document.getElementById('diag-marca').value;
             const modelo = document.getElementById('diag-modelo').value;
+            const ano = document.getElementById('diag-ano').value.trim();
             const mecanico = document.getElementById('diag-mecanico-select').value;
             const obs = document.getElementById('diag-obs').value;
             const assinatura = document.getElementById('diag-signature-name').value.trim();
@@ -1331,6 +1489,14 @@
 
             const selectedDefects = [];
             document.querySelectorAll('input[name="predef_defect"]:checked').forEach(cb => selectedDefects.push(cb.value));
+            const selectedServices = [];
+            document.querySelectorAll('input[name="catalog_service"]:checked').forEach(cb => selectedServices.push(cb.value));
+            const selectedParts = [];
+            document.querySelectorAll('input[name="catalog_part"]:checked').forEach(cb => selectedParts.push(cb.value));
+
+            if (selectedDefects.length === 0) { showToast('Selecione pelo menos 1 defeito encontrado.', 'error'); return; }
+            if (selectedServices.length === 0) { showToast('Selecione pelo menos 1 serviço a ser efetuado.', 'error'); return; }
+            if (selectedParts.length === 0) { showToast('Selecione pelo menos 1 peça a ser substituída.', 'error'); return; }
             const now = new Date();
             const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 
@@ -1341,7 +1507,9 @@
                 const row = {
                     id: diagnosticId || 'diag-' + Date.now(),
                     company_id: currentCompany.id,
-                    placa, km, marca, modelo, mecanico, assinatura,
+                    placa, km, marca, modelo, ano, mecanico, assinatura,
+                    pecas: selectedParts,
+                    servicos: selectedServices,
                     data: existing?.data || dateStr,
                     defeitos: selectedDefects,
                     observacoes: obs,
@@ -1370,7 +1538,9 @@
                 const finalAttachments = await uploadDiagnosticAttachments(diagnosticId, currentTempAttachments);
 
                 const localDiagnostic = {
-                    id: diagnosticId, placa, km, marca, modelo, mecanico, assinatura,
+                    id: diagnosticId, placa, km, marca, modelo, ano, mecanico, assinatura,
+                    pecas: selectedParts,
+                    servicos: selectedServices,
                     data: row.data, defeitos: selectedDefects, observacoes: obs,
                     anexos: finalAttachments, status: row.status,
                     dataAtualizacao: row.data_atualizacao
@@ -1457,7 +1627,9 @@
             if (!diag) return;
 
             const printArea = document.getElementById('print-area');
-            let defeitosListHtml = diag.defeitos.map(d => `<li>${d}</li>`).join('');
+            let defeitosListHtml = diag.defeitos.map(d => `<li>${escapeHtml(d)}</li>`).join('');
+            let servicosListHtml = (diag.servicos || []).map(x => `<li>${escapeHtml(x)}</li>`).join('');
+            let pecasListHtml = (diag.pecas || []).map(x => `<li>${escapeHtml(x)}</li>`).join('');
 
             printArea.innerHTML = `
                 <div style="font-family: Arial, sans-serif; color: #111; padding: 20px;">
@@ -1489,6 +1661,15 @@
                         <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
                             ${defeitosListHtml || '<li>Nenhum defeito específico assinalado.</li>'}
                         </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 6px; color: #333;">Serviços a Serem Efetuados</h3>
+                        <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">${servicosListHtml}</ul>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 6px; color: #333;">Peças a Serem Substituídas</h3>
+                        <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">${pecasListHtml}</ul>
                     </div>
 
                     ${diag.observacoes ? `
