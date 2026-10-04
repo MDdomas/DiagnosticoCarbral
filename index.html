@@ -460,7 +460,12 @@
         <!-- Generated dynamically on print -->
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        const SUPABASE_URL = "https://eyricdzytukgqbighvky.supabase.co";
+        const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PATJFNJp5oVWz10nSyEseg_fArltTfn";
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
         // Companies data storage
         let companies = [];
         let currentCompany = null;
@@ -497,9 +502,9 @@
         };
 
         // Initialize App on Load
-        window.addEventListener('DOMContentLoaded', () => {
-            loadStoredCompanies();
-            checkSession();
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadStoredCompanies();
+            await checkSession();
         });
 
         function switchAuthTab(tab) {
@@ -521,145 +526,260 @@
             }
         }
 
-        function loadStoredCompanies() {
-            const saved = localStorage.getItem('diagnostico_carbral_companies');
-            if (saved) {
-                try {
-                    companies = JSON.parse(saved);
-                } catch(e) {
-                    companies = [];
-                }
-            } else {
-                companies = [
-                    { id: 'comp-1', name: 'Oficina Carbral Matriz', cnpj: '12.345.678/0001-99', password: '123' }
-                ];
-                saveCompaniesToDisk();
-            }
+        // O CNPJ continua sendo o login visível. Internamente ele vira um e-mail técnico
+        // usado pelo Supabase Auth. O usuário nunca precisa informar esse e-mail.
+        function authEmailFromCnpj(cnpj) {
+            const digits = String(cnpj || '').replace(/\D/g, '');
+            return `cnpj-${digits}@auth.oficinacabral.invalid`;
         }
 
-        function saveCompaniesToDisk() {
-            localStorage.setItem('diagnostico_carbral_companies', JSON.stringify(companies));
+        function normalizeCnpj(cnpj) {
+            return String(cnpj || '').replace(/\D/g, '');
         }
 
-        function handleCompanyRegister(e) {
+        async function loadStoredCompanies() {
+            // Mantido por compatibilidade com o fluxo original.
+            // Os dados agora vêm do Supabase.
+            companies = [];
+        }
+
+        async function handleCompanyRegister(e) {
             e.preventDefault();
             const name = document.getElementById('reg-name').value.trim();
             const cnpj = document.getElementById('reg-cnpj').value.trim();
             const password = document.getElementById('reg-password').value;
+            const cnpjDigits = normalizeCnpj(cnpj);
 
-            if (companies.some(c => c.cnpj === cnpj)) {
-                showToast('Este CNPJ já está cadastrado!', 'error');
+            if (!name || !cnpjDigits || !password) {
+                showToast('Preencha todos os campos obrigatórios.', 'error');
                 return;
             }
 
-            const newCompany = {
-                id: 'comp-' + Date.now(),
-                name,
-                cnpj,
-                password
-            };
+            if (cnpjDigits.length !== 14) {
+                showToast('Informe um CNPJ válido com 14 dígitos.', 'error');
+                return;
+            }
 
-            companies.push(newCompany);
-            saveCompaniesToDisk();
+            try {
+                const email = authEmailFromCnpj(cnpjDigits);
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: { data: { cnpj: cnpjDigits, company_name: name } }
+                });
 
-            currentCompany = newCompany;
-            localStorage.setItem('diagnostico_carbral_session', JSON.stringify(newCompany));
-            
-            loadCompanyData(newCompany.id);
-            setupDashboard();
-            showToast('Empresa cadastrada com sucesso!', 'success');
+                if (authError) throw authError;
+                if (!authData.user) throw new Error('O Supabase não retornou o usuário criado.');
+                if (!authData.session) {
+                    throw new Error('A confirmação de e-mail está ativada no Supabase. Desative "Confirm email" em Authentication > Providers > Email e tente novamente.');
+                }
+
+                const companyId = 'comp-' + Date.now();
+                const company = {
+                    id: companyId,
+                    name,
+                    cnpj,
+                    auth_user_id: authData.user.id
+                };
+
+                const { error: companyError } = await supabaseClient
+                    .from('companies')
+                    .insert({
+                        id: companyId,
+                        name,
+                        cnpj,
+                        auth_user_id: authData.user.id,
+                        password_hash: 'managed-by-supabase-auth'
+                    });
+
+                if (companyError) throw companyError;
+
+                currentCompany = company;
+                await seedDefaultCompanyData();
+                await loadCompanyData(currentCompany.id);
+                setupDashboard();
+                document.getElementById('register-form').reset();
+                showToast('Empresa cadastrada com sucesso!', 'success');
+            } catch (error) {
+                console.error('Erro no cadastro:', error);
+                let message = error.message || 'Não foi possível cadastrar a empresa.';
+                if (message.toLowerCase().includes('already registered') || message.toLowerCase().includes('user already registered')) {
+                    message = 'Este CNPJ já está cadastrado!';
+                }
+                showToast(message, 'error');
+            }
         }
 
-        function handleCompanyLogin(e) {
+        async function handleCompanyLogin(e) {
             e.preventDefault();
             const cnpj = document.getElementById('login-cnpj').value.trim();
             const password = document.getElementById('login-password').value;
+            const cnpjDigits = normalizeCnpj(cnpj);
 
-            const company = companies.find(c => c.cnpj === cnpj && c.password === password);
-            if (!company) {
+            try {
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                    email: authEmailFromCnpj(cnpjDigits),
+                    password
+                });
+
+                if (authError) throw authError;
+
+                const { data: company, error: companyError } = await supabaseClient
+                    .from('companies')
+                    .select('id, name, cnpj, auth_user_id')
+                    .eq('auth_user_id', authData.user.id)
+                    .single();
+
+                if (companyError || !company) {
+                    await supabaseClient.auth.signOut();
+                    throw new Error('Empresa não encontrada para este usuário.');
+                }
+
+                currentCompany = company;
+                document.getElementById('login-password').value = '';
+
+                await loadCompanyData(currentCompany.id);
+                setupDashboard();
+                showToast(`Bem-vindo, ${company.name}!`, 'success');
+            } catch (error) {
+                console.error('Erro no login:', error);
                 showToast('CNPJ ou Senha incorretos!', 'error');
-                return;
-            }
-
-            currentCompany = company;
-            localStorage.setItem('diagnostico_carbral_session', JSON.stringify(company));
-            document.getElementById('login-password').value = '';
-
-            loadCompanyData(company.id);
-            setupDashboard();
-            showToast(`Bem-vindo, ${company.name}!`, 'success');
-        }
-
-        function loadCompanyData(companyId) {
-            // Load Diagnostics
-            const savedDiags = localStorage.getItem(`diagnostico_carbral_data_${companyId}`);
-            if (savedDiags) {
-                try {
-                    diagnostics = JSON.parse(savedDiags);
-                } catch(e) {
-                    diagnostics = [];
-                }
-            } else {
-                diagnostics = [
-                    {
-                        id: 'diag-1',
-                        placa: 'ABC-1234',
-                        km: '52000',
-                        marca: 'Volkswagen',
-                        modelo: 'Gol 1.6',
-                        mecanico: 'Carlos Silva',
-                        assinatura: 'Carlos Alberto da Silva',
-                        data: '03/10/2026 08:30',
-                        defeitos: ['Pastilhas de freio gastas / chiando', 'Óleo do motor vencido / nível baixo'],
-                        observacoes: 'Cliente relata chiado ao frear e leve demora na partida a frio.',
-                        anexos: [
-                            { name: 'laudo_freios.pdf', type: 'application/pdf', size: '1.2 MB', data: '#' },
-                            { name: 'foto_pastilha.jpg', type: 'image/jpeg', size: '840 KB', data: 'https://placehold.co/600x400/27272a/ef4444?text=Pastilha+Gasta' }
-                        ],
-                        status: 'Concluído'
-                    }
-                ];
-                saveStoredDataToDisk();
-            }
-
-            // Load Mechanics
-            const savedMechs = localStorage.getItem(`diagnostico_carbral_mechanics_${companyId}`);
-            if (savedMechs) {
-                try {
-                    mechanics = JSON.parse(savedMechs);
-                } catch(e) {
-                    mechanics = [];
-                }
-            } else {
-                mechanics = [
-                    { id: 'mech-1', name: 'Carlos Silva', specialty: 'Motor & Injeção', phone: '(21) 98888-1234' },
-                    { id: 'mech-2', name: 'Marcos Oliveira', specialty: 'Suspensão & Freios', phone: '(21) 97777-5678' }
-                ];
-                saveMechanicsToDisk();
             }
         }
 
-        function saveStoredDataToDisk() {
+        async function loadCompanyData(companyId) {
             if (!currentCompany) return;
-            localStorage.setItem(`diagnostico_carbral_data_${currentCompany.id}`, JSON.stringify(diagnostics));
+
+            try {
+                const { data: diagRows, error: diagError } = await supabaseClient
+                    .from('diagnostics')
+                    .select('*')
+                    .eq('company_id', companyId)
+                    .order('created_at', { ascending: false });
+                if (diagError) throw diagError;
+
+                const { data: mechRows, error: mechError } = await supabaseClient
+                    .from('mechanics')
+                    .select('*')
+                    .eq('company_id', companyId)
+                    .order('created_at', { ascending: true });
+                if (mechError) throw mechError;
+
+                const { data: attachmentRows, error: attachmentError } = await supabaseClient
+                    .from('diagnostic_attachments')
+                    .select('*')
+                    .eq('company_id', companyId)
+                    .order('created_at', { ascending: true });
+                if (attachmentError) throw attachmentError;
+
+                const attachmentMap = {};
+                (attachmentRows || []).forEach(att => {
+                    if (!attachmentMap[att.diagnostic_id]) attachmentMap[att.diagnostic_id] = [];
+                    attachmentMap[att.diagnostic_id].push({
+                        id: att.id,
+                        name: att.name,
+                        type: att.type,
+                        size: att.size,
+                        storage_path: att.storage_path
+                    });
+                });
+
+                diagnostics = (diagRows || []).map(row => ({
+                    id: row.id,
+                    placa: row.placa,
+                    km: row.km,
+                    marca: row.marca,
+                    modelo: row.modelo,
+                    mecanico: row.mecanico,
+                    assinatura: row.assinatura,
+                    data: row.data,
+                    defeitos: row.defeitos || [],
+                    observacoes: row.observacoes || '',
+                    anexos: attachmentMap[row.id] || [],
+                    status: row.status || 'Concluído',
+                    dataAtualizacao: row.data_atualizacao
+                }));
+
+                mechanics = (mechRows || []).map(row => ({
+                    id: row.id,
+                    name: row.name,
+                    specialty: row.specialty,
+                    phone: row.phone
+                }));
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                diagnostics = [];
+                mechanics = [];
+                showToast('Não foi possível carregar os dados da oficina.', 'error');
+            }
         }
 
-        function saveMechanicsToDisk() {
+        async function seedDefaultCompanyData() {
             if (!currentCompany) return;
-            localStorage.setItem(`diagnostico_carbral_mechanics_${currentCompany.id}`, JSON.stringify(mechanics));
+
+            const defaultMechanics = [
+                { id: 'mech-' + Date.now(), company_id: currentCompany.id, name: 'Carlos Silva', specialty: 'Motor & Injeção', phone: '(21) 98888-1234' },
+                { id: 'mech-' + (Date.now() + 1), company_id: currentCompany.id, name: 'Marcos Oliveira', specialty: 'Suspensão & Freios', phone: '(21) 97777-5678' }
+            ];
+
+            const { error: mechError } = await supabaseClient.from('mechanics').insert(defaultMechanics);
+            if (mechError) throw mechError;
+
+            const defaultDiagnostic = {
+                id: 'diag-' + Date.now(),
+                company_id: currentCompany.id,
+                placa: 'ABC-1234',
+                km: '52000',
+                marca: 'Volkswagen',
+                modelo: 'Gol 1.6',
+                mecanico: 'Carlos Silva',
+                assinatura: 'Carlos Alberto da Silva',
+                data: '03/10/2026 08:30',
+                defeitos: ['Pastilhas de freio gastas / chiando', 'Óleo do motor vencido / nível baixo'],
+                observacoes: 'Cliente relata chiado ao frear e leve demora na partida a frio.',
+                status: 'Concluído'
+            };
+
+            const { error: diagError } = await supabaseClient.from('diagnostics').insert(defaultDiagnostic);
+            if (diagError) throw diagError;
         }
 
-        function checkSession() {
-            const session = localStorage.getItem('diagnostico_carbral_session');
-            if (session) {
-                try {
-                    currentCompany = JSON.parse(session);
-                    loadCompanyData(currentCompany.id);
-                    setupDashboard();
-                } catch(e) {
+        async function saveStoredDataToDisk() {
+            // Mantém o nome da função original para não alterar o restante da aplicação.
+            // A persistência agora é feita diretamente no Supabase.
+            if (!currentCompany) return;
+        }
+
+        async function saveMechanicsToDisk() {
+            // Mantém o nome da função original para compatibilidade.
+            if (!currentCompany) return;
+        }
+
+        async function checkSession() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) {
                     showView('login');
+                    return;
                 }
-            } else {
+
+                const { data: company, error } = await supabaseClient
+                    .from('companies')
+                    .select('id, name, cnpj, auth_user_id')
+                    .eq('auth_user_id', session.user.id)
+                    .single();
+
+                if (error || !company) {
+                    await supabaseClient.auth.signOut();
+                    showView('login');
+                    return;
+                }
+
+                currentCompany = company;
+                await loadCompanyData(company.id);
+                setupDashboard();
+            } catch (error) {
+                console.error('Erro ao restaurar sessão:', error);
                 showView('login');
             }
         }
@@ -682,8 +802,8 @@
             }
         }
 
-        function handleLogout() {
-            localStorage.removeItem('diagnostico_carbral_session');
+        async function handleLogout() {
+            await supabaseClient.auth.signOut();
             currentCompany = null;
             diagnostics = [];
             mechanics = [];
@@ -718,29 +838,43 @@
         }
 
         // Mechanics Management
-        function saveMechanic(e) {
+        async function saveMechanic(e) {
             e.preventDefault();
+            if (!currentCompany) return;
+
             const name = document.getElementById('mech-name').value.trim();
             const specialty = document.getElementById('mech-specialty').value.trim() || 'Geral';
             const phone = document.getElementById('mech-phone').value.trim() || 'Não informado';
 
             const newMech = {
                 id: 'mech-' + Date.now(),
+                company_id: currentCompany.id,
                 name,
                 specialty,
                 phone
             };
 
-            mechanics.push(newMech);
-            saveMechanicsToDisk();
+            const { error } = await supabaseClient.from('mechanics').insert(newMech);
+            if (error) {
+                console.error(error);
+                showToast('Não foi possível cadastrar o mecânico.', 'error');
+                return;
+            }
+
+            mechanics.push({ id: newMech.id, name, specialty, phone });
             document.getElementById('mechanic-form').reset();
             renderMechanicsList();
             showToast(`Mecânico ${name} cadastrado com sucesso!`, 'success');
         }
 
-        function deleteMechanic(id) {
+        async function deleteMechanic(id) {
+            const { error } = await supabaseClient.from('mechanics').delete().eq('id', id).eq('company_id', currentCompany.id);
+            if (error) {
+                console.error(error);
+                showToast('Não foi possível remover o mecânico.', 'error');
+                return;
+            }
             mechanics = mechanics.filter(m => m.id !== id);
-            saveMechanicsToDisk();
             renderMechanicsList();
             showToast('Mecânico removido.', 'info');
         }
@@ -1049,12 +1183,25 @@
         }
 
         // Cancel Diagnostic Status
-        function cancelDiagnostic(id) {
+        async function cancelDiagnostic(id) {
             const diag = diagnostics.find(d => d.id === id);
             if (!diag) return;
 
-            diag.status = diag.status === 'Cancelado' ? 'Concluído' : 'Cancelado';
-            saveStoredDataToDisk();
+            const newStatus = diag.status === 'Cancelado' ? 'Concluído' : 'Cancelado';
+            const { error } = await supabaseClient
+                .from('diagnostics')
+                .update({ status: newStatus, data_atualizacao: new Date().toISOString() })
+                .eq('id', id)
+                .eq('company_id', currentCompany.id);
+
+            if (error) {
+                console.error(error);
+                showToast('Não foi possível atualizar o status.', 'error');
+                return;
+            }
+
+            diag.status = newStatus;
+            diag.dataAtualizacao = new Date().toISOString();
             renderDiagnosticsList();
             showToast(`Diagnóstico da placa ${diag.placa} foi marcado como ${diag.status}.`, 'info');
         }
@@ -1064,18 +1211,15 @@
             const files = e.target.files;
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                const reader = new FileReader();
-                reader.onload = function(uploadEvent) {
-                    currentTempAttachments.push({
-                        name: file.name,
-                        type: file.type,
-                        size: (file.size / (1024*1024)).toFixed(1) + ' MB',
-                        data: uploadEvent.target.result
-                    });
-                    renderAttachmentsPreview();
-                };
-                reader.readAsDataURL(file);
+                currentTempAttachments.push({
+                    name: file.name,
+                    type: file.type,
+                    size: (file.size / (1024*1024)).toFixed(1) + ' MB',
+                    file,
+                    isNew: true
+                });
             }
+            renderAttachmentsPreview();
             e.target.value = '';
         }
 
@@ -1109,9 +1253,63 @@
             renderAttachmentsPreview();
         }
 
+        async function uploadDiagnosticAttachments(diagnosticId, attachments) {
+            const result = [];
+
+            for (const att of attachments) {
+                if (!att.isNew || !att.file) {
+                    result.push({
+                        id: att.id, name: att.name, type: att.type, size: att.size, storage_path: att.storage_path
+                    });
+                    continue;
+                }
+
+                const safeName = att.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const path = `${currentCompany.id}/${diagnosticId}/${Date.now()}-${safeName}`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('diagnostic-attachments')
+                    .upload(path, att.file, { upsert: false, contentType: att.type || 'application/octet-stream' });
+
+                if (uploadError) throw uploadError;
+
+                const attachmentRow = {
+                    diagnostic_id: diagnosticId,
+                    company_id: currentCompany.id,
+                    name: att.name,
+                    type: att.type || 'application/octet-stream',
+                    size: att.size,
+                    storage_path: path
+                };
+
+                const { data, error: dbError } = await supabaseClient
+                    .from('diagnostic_attachments')
+                    .insert(attachmentRow)
+                    .select('*')
+                    .single();
+
+                if (dbError) {
+                    await supabaseClient.storage.from('diagnostic-attachments').remove([path]);
+                    throw dbError;
+                }
+
+                result.push({
+                    id: data.id,
+                    name: data.name,
+                    type: data.type,
+                    size: data.size,
+                    storage_path: data.storage_path
+                });
+            }
+
+            return result;
+        }
+
         // Save / Update Diagnostic Form
-        function saveDiagnostic(e) {
+        async function saveDiagnostic(e) {
             e.preventDefault();
+            if (!currentCompany) return;
+
             const id = document.getElementById('diag-id').value;
             const placa = document.getElementById('diag-placa').value.toUpperCase();
             const km = document.getElementById('diag-km').value;
@@ -1131,92 +1329,122 @@
                 return;
             }
 
-            // Gather selected defects
             const selectedDefects = [];
-            document.querySelectorAll('input[name="predef_defect"]:checked').forEach(cb => {
-                selectedDefects.push(cb.value);
-            });
-
+            document.querySelectorAll('input[name="predef_defect"]:checked').forEach(cb => selectedDefects.push(cb.value));
             const now = new Date();
             const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 
-            if (id) {
-                // Edit existing
-                const index = diagnostics.findIndex(d => d.id === id);
-                if (index !== -1) {
-                    diagnostics[index] = {
-                        ...diagnostics[index],
-                        placa, km, marca, modelo, mecanico,
-                        observacoes: obs,
-                        defeitos: selectedDefects,
-                        anexos: [...currentTempAttachments],
-                        assinatura,
-                        dataAtualizacao: dateStr
-                    };
-                }
-                showToast('Diagnóstico atualizado com sucesso!', 'success');
-            } else {
-                // Create new
-                const newDiag = {
-                    id: 'diag-' + Date.now(),
-                    placa, km, marca, modelo, mecanico,
-                    assinatura,
-                    data: dateStr,
+            try {
+                let diagnosticId = id;
+                const existing = id ? diagnostics.find(d => d.id === id) : null;
+
+                const row = {
+                    id: diagnosticId || 'diag-' + Date.now(),
+                    company_id: currentCompany.id,
+                    placa, km, marca, modelo, mecanico, assinatura,
+                    data: existing?.data || dateStr,
                     defeitos: selectedDefects,
                     observacoes: obs,
-                    anexos: [...currentTempAttachments],
-                    status: 'Concluído'
+                    status: existing?.status || 'Concluído',
+                    data_atualizacao: id ? new Date().toISOString() : null
                 };
-                diagnostics.unshift(newDiag);
-                showToast('Novo diagnóstico lançado com sucesso!', 'success');
-            }
+                diagnosticId = row.id;
 
-            saveStoredDataToDisk();
-            closeDiagnosticModal();
-            renderDiagnosticsList();
+                const { error: diagError } = await supabaseClient
+                    .from('diagnostics')
+                    .upsert(row, { onConflict: 'id' });
+                if (diagError) throw diagError;
+
+                // Remove from UI any attachments that are no longer selected.
+                const originalAttachments = existing?.anexos || [];
+                const keptExistingIds = new Set(currentTempAttachments.filter(a => !a.isNew && a.id).map(a => a.id));
+                const removed = originalAttachments.filter(a => a.id && !keptExistingIds.has(a.id));
+
+                for (const att of removed) {
+                    if (att.storage_path) {
+                        await supabaseClient.storage.from('diagnostic-attachments').remove([att.storage_path]);
+                    }
+                    await supabaseClient.from('diagnostic_attachments').delete().eq('id', att.id).eq('company_id', currentCompany.id);
+                }
+
+                const finalAttachments = await uploadDiagnosticAttachments(diagnosticId, currentTempAttachments);
+
+                const localDiagnostic = {
+                    id: diagnosticId, placa, km, marca, modelo, mecanico, assinatura,
+                    data: row.data, defeitos: selectedDefects, observacoes: obs,
+                    anexos: finalAttachments, status: row.status,
+                    dataAtualizacao: row.data_atualizacao
+                };
+
+                if (id) {
+                    const index = diagnostics.findIndex(d => d.id === id);
+                    if (index !== -1) diagnostics[index] = localDiagnostic;
+                    showToast('Diagnóstico atualizado com sucesso!', 'success');
+                } else {
+                    diagnostics.unshift(localDiagnostic);
+                    showToast('Novo diagnóstico lançado com sucesso!', 'success');
+                }
+
+                closeDiagnosticModal();
+                renderDiagnosticsList();
+            } catch (error) {
+                console.error('Erro ao salvar diagnóstico:', error);
+                showToast('Não foi possível salvar o diagnóstico. Verifique o banco e o Storage.', 'error');
+            }
         }
 
         // Attachments Modal View
-        function openAttachmentsModalById(id) {
+        async function openAttachmentsModalById(id) {
             const diag = diagnostics.find(d => d.id === id);
             if (!diag) return;
 
             document.getElementById('att-plate-title').textContent = diag.placa;
             const container = document.getElementById('attachments-list-container');
-            container.innerHTML = '';
+            container.innerHTML = '<p class="text-xs text-zinc-500 text-center py-6">Carregando anexos...</p>';
+            document.getElementById('attachments-modal').classList.remove('hidden');
 
             if (!diag.anexos || diag.anexos.length === 0) {
                 container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6">Nenhum anexo disponível para este diagnóstico.</p>`;
-            } else {
-                diag.anexos.forEach((att, idx) => {
-                    let icon = 'fa-file';
-                    if (att.type.includes('image')) icon = 'fa-file-image text-emerald-400';
-                    else if (att.type.includes('video')) icon = 'fa-file-video text-amber-400';
-                    else if (att.type.includes('pdf')) icon = 'fa-file-pdf text-red-400';
-
-                    container.innerHTML += `
-                        <div class="bg-dark border border-border p-3.5 rounded-xl flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-zinc-900 border border-border flex items-center justify-center text-lg">
-                                    <i class="fa-solid ${icon}"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-xs font-semibold text-white">${att.name}</h4>
-                                    <span class="text-[10px] text-zinc-500">${att.size || 'Arquivo anexo'}</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <a href="${att.data}" download="${att.name}" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 rounded-lg font-medium flex items-center gap-1.5 transition-colors">
-                                    <i class="fa-solid fa-download text-[10px]"></i>
-                                    <span>Baixar</span>
-                                </a>
-                            </div>
-                        </div>
-                    `;
-                });
+                return;
             }
 
-            document.getElementById('attachments-modal').classList.remove('hidden');
+            const items = [];
+            for (const att of diag.anexos) {
+                let icon = 'fa-file';
+                if (att.type?.includes('image')) icon = 'fa-file-image text-emerald-400';
+                else if (att.type?.includes('video')) icon = 'fa-file-video text-amber-400';
+                else if (att.type?.includes('pdf')) icon = 'fa-file-pdf text-red-400';
+
+                let url = '#';
+                if (att.storage_path) {
+                    const { data, error } = await supabaseClient.storage
+                        .from('diagnostic-attachments')
+                        .createSignedUrl(att.storage_path, 3600);
+                    if (!error && data?.signedUrl) url = data.signedUrl;
+                }
+
+                items.push(`
+                    <div class="bg-dark border border-border p-3.5 rounded-xl flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-zinc-900 border border-border flex items-center justify-center text-lg">
+                                <i class="fa-solid ${icon}"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-semibold text-white">${att.name}</h4>
+                                <span class="text-[10px] text-zinc-500">${att.size || 'Arquivo anexo'}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="${url}" target="_blank" rel="noopener" download="${att.name}" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 rounded-lg font-medium flex items-center gap-1.5 transition-colors">
+                                <i class="fa-solid fa-download text-[10px]"></i>
+                                <span>Baixar</span>
+                            </a>
+                        </div>
+                    </div>
+                `);
+            }
+
+            container.innerHTML = items.join('');
         }
 
         function closeAttachmentsModal() {
