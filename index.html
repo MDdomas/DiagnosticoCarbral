@@ -109,6 +109,11 @@
         .check-status.attention { color: #facc15; border-color: rgba(250,204,21,.35); background: rgba(234,179,8,.08); }
         .check-status.bad { color: #f87171; border-color: rgba(248,113,113,.35); background: rgba(239,68,68,.08); }
         .check-radio:checked + .check-status { box-shadow: 0 0 0 2px rgba(239,68,68,.18); transform: translateY(-1px); }
+        .check-radio, .dashboard-radio { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; }
+        .check-status, .dashboard-option { touch-action: manipulation; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .check-radio:checked + .check-status { box-shadow: 0 0 0 2px rgba(255,255,255,.22), 0 0 0 4px rgba(239,68,68,.22); filter: brightness(1.18); font-weight: 800; }
+        .dashboard-radio:checked + .dashboard-option { box-shadow: 0 0 0 2px rgba(255,255,255,.22), 0 0 0 4px rgba(16,185,129,.18); filter: brightness(1.18); font-weight: 800; }
+        .dashboard-item-label { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
     </style>
 </head>
 <body class="bg-darker text-zinc-100 min-h-screen flex flex-col selection:bg-red-600 selection:text-white">
@@ -142,7 +147,7 @@
                             <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-zinc-500">
                                 <i class="fa-solid fa-building"></i>
                             </span>
-                            <input type="text" id="login-cnpj" required placeholder="00.000.000/0001-00" class="w-full bg-dark border border-border rounded-xl pl-11 pr-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
+                            <input type="text" id="login-cnpj" required inputmode="numeric" maxlength="18" oninput="formatCnpjField(this)" placeholder="00.000.000/0001-00" class="w-full bg-dark border border-border rounded-xl pl-11 pr-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
                         </div>
                     </div>
 
@@ -171,7 +176,7 @@
 
                     <div>
                         <label class="block text-xs font-medium text-zinc-300 mb-1.5 uppercase tracking-wide">CNPJ da Empresa</label>
-                        <input type="text" id="reg-cnpj" required placeholder="00.000.000/0001-00" class="w-full bg-dark border border-border rounded-xl px-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
+                        <input type="text" id="reg-cnpj" required inputmode="numeric" maxlength="18" oninput="formatCnpjField(this)" placeholder="00.000.000/0001-00" class="w-full bg-dark border border-border rounded-xl px-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors">
                     </div>
 
                     <div>
@@ -478,9 +483,9 @@
                                 <p class="text-[10px] text-zinc-500 mt-1">Verificação visual do veículo. Os dados de placa, veículo, quilometragem e mecânico são aproveitados do diagnóstico.</p>
                             </div>
                             <div class="flex flex-wrap gap-1.5 text-[9px] font-semibold">
-                                <span class="px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">● BOM</span>
-                                <span class="px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">● ATENÇÃO</span>
-                                <span class="px-2 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20">● RUIM</span>
+                                <span class="px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">● B</span>
+                                <span class="px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">● A</span>
+                                <span class="px-2 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20">● R</span>
                             </div>
                         </div>
 
@@ -496,9 +501,9 @@
                                 <thead>
                                     <tr class="bg-dark border border-border">
                                         <th class="text-left px-2 py-2.5 text-zinc-400 font-bold uppercase text-[10px] check-item-cell">Item</th>
-                                        <th class="px-1 py-2.5 text-emerald-400 font-bold text-[9px] check-option-cell">Bom</th>
-                                        <th class="px-1 py-2.5 text-yellow-300 font-bold text-[9px] check-option-cell">Atenção</th>
-                                        <th class="px-1 py-2.5 text-red-400 font-bold text-[9px] check-option-cell">Ruim</th>
+                                        <th class="px-1 py-2.5 text-emerald-400 font-bold text-[9px] check-option-cell">B</th>
+                                        <th class="px-1 py-2.5 text-yellow-300 font-bold text-[9px] check-option-cell">A</th>
+                                        <th class="px-1 py-2.5 text-red-400 font-bold text-[9px] check-option-cell">R</th>
                                     </tr>
                                 </thead>
                                 <tbody id="checklist-items-container"></tbody>
@@ -665,7 +670,7 @@
         ];
 
         const CHECKLIST_DASHBOARD_ITEMS = [
-            { key: 'luz_injecao', label: 'Luz de injeção', icon: 'fa-solid fa-engine' },
+            { key: 'luz_injecao', label: 'Luz de injeção', icon: 'fa-solid fa-syringe' },
             { key: 'luz_abs', label: 'Luz de ABS', icon: 'fa-solid fa-circle-exclamation' },
             { key: 'luz_oleo', label: 'Luz de óleo', icon: 'fa-solid fa-oil-can' },
             { key: 'luz_bateria', label: 'Luz de bateria', icon: 'fa-solid fa-car-battery' }
@@ -674,6 +679,8 @@
         // Initialize App on Load
         window.addEventListener('DOMContentLoaded', async () => {
             renderChecklistItems();
+            formatCnpjField(document.getElementById('login-cnpj'));
+            formatCnpjField(document.getElementById('reg-cnpj'));
             await checkSession();
         });
 
@@ -705,6 +712,17 @@
 
         function normalizeCnpj(cnpj) {
             return String(cnpj || '').replace(/\D/g, '');
+        }
+
+        function formatCnpjField(input) {
+            if (!input) return;
+            const digits = String(input.value || '').replace(/\D/g, '').slice(0, 14);
+            let formatted = digits;
+            if (digits.length > 2) formatted = digits.slice(0, 2) + '.' + digits.slice(2);
+            if (digits.length > 5) formatted = formatted.slice(0, 6) + '.' + formatted.slice(6);
+            if (digits.length > 8) formatted = formatted.slice(0, 10) + '/' + formatted.slice(10);
+            if (digits.length > 12) formatted = formatted.slice(0, 15) + '-' + formatted.slice(15);
+            input.value = formatted;
         }
 
         async function loadStoredCompanies() {
@@ -765,7 +783,7 @@
                 if (companyError) throw companyError;
 
                 currentCompany = company;
-                await seedDefaultCompanyData();
+                // Novo cadastro começa vazio: nenhum mecânico ou diagnóstico de exemplo é criado.
                 await loadCompanyData(currentCompany.id);
                 setupDashboard();
                 document.getElementById('register-form').reset();
@@ -875,42 +893,9 @@
         }
 
         async function seedDefaultCompanyData() {
-            if (!currentCompany) return;
-
-            const defaultMechanics = [
-                { id: 'mech-' + Date.now(), company_id: currentCompany.id, name: 'Carlos Silva', specialty: 'Motor & Injeção', phone: '(21) 98888-1234' },
-                { id: 'mech-' + (Date.now() + 1), company_id: currentCompany.id, name: 'Marcos Oliveira', specialty: 'Suspensão & Freios', phone: '(21) 97777-5678' }
-            ];
-
-            const { error: mechError } = await supabaseClient.from('mechanics').insert(defaultMechanics);
-            if (mechError) throw mechError;
-
-            const defaultDiagnostic = {
-                id: 'diag-' + Date.now(),
-                company_id: currentCompany.id,
-                placa: 'ABC-1234',
-                km: '52000',
-                marca: 'Volkswagen',
-                modelo: 'Gol 1.6',
-                ano: '2020',
-                pecas: ['Pastilha de freio dianteira', 'Óleo do motor', 'Filtro de óleo'],
-                servicos: ['Troca de óleo do motor', 'Revisão do sistema de freios'],
-                checklist: {
-                    bateria: 'bom', palhetas: 'atencao', luzes: 'bom', arrefecimento: 'bom',
-                    oleo: 'atencao', freio: 'bom', pneus: 'atencao', ar_condicionado: 'bom',
-                    luz_injecao: 'nao', luz_abs: 'nao', luz_oleo: 'nao', luz_bateria: 'nao',
-                    observacoes: 'Exemplo de checklist inicial.'
-                },
-                mecanico: 'Carlos Silva',
-                assinatura: 'Carlos Alberto da Silva',
-                data: '03/10/2026 08:30',
-                defeitos: ['Pastilhas de freio gastas / chiando', 'Óleo do motor vencido / nível baixo'],
-                observacoes: 'Cliente relata chiado ao frear e leve demora na partida a frio.',
-                status: 'Concluído'
-            };
-
-            const { error: diagError } = await supabaseClient.from('diagnostics').insert(defaultDiagnostic);
-            if (diagError) throw diagError;
+            // Mantida apenas por compatibilidade. Novas empresas começam sem
+            // mecânicos e diagnósticos de exemplo.
+            return;
         }
 
         async function saveStoredDataToDisk() {
@@ -1362,18 +1347,18 @@
                 container.innerHTML = CHECKLIST_ITEMS.map((item, index) => {
                     const selected = values[item.key] || '';
                     const options = [
-                        ['bom', 'Bom', 'emerald'],
-                        ['atencao', 'Atenção', 'yellow'],
-                        ['ruim', 'Ruim', 'red']
+                        ['bom', 'B', 'Bom', 'emerald'],
+                        ['atencao', 'A', 'Atenção', 'yellow'],
+                        ['ruim', 'R', 'Ruim', 'red']
                     ];
                     return `
                         <tr class="print-checklist-row border-x border-b border-border ${index % 2 ? 'bg-zinc-950/40' : 'bg-card'}">
                             <td class="px-2 py-2.5 text-zinc-200 font-medium check-item-cell">${index + 1}. ${item.label}</td>
-                            ${options.map(([value, label]) => `
+                            ${options.map(([value, shortLabel, fullLabel]) => `
                                 <td class="text-center check-option-cell">
-                                    <label class="cursor-pointer inline-flex w-full">
-                                        <input class="check-radio sr-only" type="radio" name="checklist_${item.key}" value="${value}" ${selected === value ? 'checked' : ''} onchange="updateChecklistSummary()">
-                                        <span class="check-status ${value === 'bom' ? 'good' : value === 'atencao' ? 'attention' : 'bad'}">${label}</span>
+                                    <label class="cursor-pointer inline-flex w-full" title="${fullLabel}" onpointerdown="event.preventDefault()">
+                                        <input class="check-radio" tabindex="-1" type="radio" name="checklist_${item.key}" value="${value}" ${selected === value ? 'checked' : ''} onchange="updateChecklistSummary()">
+                                        <span class="check-status ${value === 'bom' ? 'good' : value === 'atencao' ? 'attention' : 'bad'}">${shortLabel}</span>
                                     </label>
                                 </td>
                             `).join('')}
@@ -1383,7 +1368,7 @@
             }
             if (dashboard) {
                 dashboard.innerHTML = `
-                    <div class="grid grid-cols-[minmax(0,1fr)_70px_70px] gap-1.5 text-[9px]">
+                    <div class="grid grid-cols-[minmax(0,1fr)_62px_62px] gap-1.5 text-[9px]">
                         <div class="px-2 py-1.5 text-zinc-500 font-bold uppercase">Item</div>
                         <div class="text-center py-1.5 text-red-400 font-bold">SIM</div>
                         <div class="text-center py-1.5 text-emerald-400 font-bold">NÃO</div>
@@ -1391,15 +1376,15 @@
                             const selected = values[item.key] || '';
                             return `
                                 <div class="bg-card border border-border rounded-lg px-2 py-2 text-zinc-200 font-medium flex items-center gap-1.5 min-w-0">
-                                    <i class="${item.icon} text-zinc-400 text-[10px]"></i><span class="truncate">${item.label}</span>
+                                    <i class="${item.icon} text-zinc-400 text-[11px] shrink-0"></i><span class="dashboard-item-label">${item.label}</span>
                                 </div>
-                                <label class="cursor-pointer inline-flex w-full">
-                                    <input class="dashboard-radio sr-only" type="radio" name="checklist_${item.key}" value="sim" ${selected === 'sim' ? 'checked' : ''}>
-                                    <span class="dashboard-option yes"><i class="fa-solid fa-circle-check"></i> Sim</span>
+                                <label class="cursor-pointer inline-flex w-full" title="Sim" onpointerdown="event.preventDefault()">
+                                    <input class="dashboard-radio" tabindex="-1" type="radio" name="checklist_${item.key}" value="sim" ${selected === 'sim' ? 'checked' : ''} onchange="updateChecklistSummary()">
+                                    <span class="dashboard-option yes"><i class="fa-solid fa-check"></i> Sim</span>
                                 </label>
-                                <label class="cursor-pointer inline-flex w-full">
-                                    <input class="dashboard-radio sr-only" type="radio" name="checklist_${item.key}" value="nao" ${selected === 'nao' ? 'checked' : ''}>
-                                    <span class="dashboard-option no"><i class="fa-solid fa-circle-xmark"></i> Não</span>
+                                <label class="cursor-pointer inline-flex w-full" title="Não" onpointerdown="event.preventDefault()">
+                                    <input class="dashboard-radio" tabindex="-1" type="radio" name="checklist_${item.key}" value="nao" ${selected === 'nao' ? 'checked' : ''} onchange="updateChecklistSummary()">
+                                    <span class="dashboard-option no"><i class="fa-solid fa-xmark"></i> Não</span>
                                 </label>
                             `;
                         }).join('')}
@@ -1421,6 +1406,31 @@
             set('checklist-summary-mecanico', mecanico);
         }
 
+        function getMissingDiagnosticFields() {
+            const missing = [];
+            const get = id => document.getElementById(id)?.value?.trim() || '';
+            if (!get('diag-placa')) missing.push('Placa');
+            if (!get('diag-km')) missing.push('Quilometragem');
+            if (!get('diag-ano')) missing.push('Ano do veículo');
+            if (!get('diag-marca')) missing.push('Marca');
+            if (!get('diag-modelo')) missing.push('Modelo');
+            if (!get('diag-mecanico-select')) missing.push('Mecânico responsável');
+            if (selectedValues('predef_defect').length === 0) missing.push('ao menos 1 defeito');
+            if (selectedValues('catalog_service').length === 0) missing.push('ao menos 1 serviço');
+            if (selectedValues('catalog_part').length === 0) missing.push('ao menos 1 peça');
+            if (!get('diag-signature-name')) missing.push('Nome completo para assinatura');
+            return missing;
+        }
+
+        function validateDiagnosticBeforeChecklist() {
+            const missing = getMissingDiagnosticFields();
+            if (missing.length) {
+                showToast(`Preencha o diagnóstico antes do checklist: ${missing.join(', ')}.`, 'error');
+                return false;
+            }
+            return true;
+        }
+
         function switchDiagnosticFormTab(tab) {
             const main = document.getElementById('diagnostic-main-section');
             const checklist = document.getElementById('diagnostic-checklist-section');
@@ -1431,6 +1441,13 @@
             const active = 'flex-1 py-2.5 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center justify-center gap-2';
             const inactive = 'flex-1 py-2.5 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center justify-center gap-2';
             if (tab === 'checklist') {
+                if (!validateDiagnosticBeforeChecklist()) {
+                    main.classList.remove('hidden');
+                    checklist.classList.add('hidden');
+                    mainBtn.className = active;
+                    checkBtn.className = inactive;
+                    return;
+                }
                 main.classList.add('hidden');
                 checklist.classList.remove('hidden');
                 checkBtn.className = active;
@@ -1488,6 +1505,11 @@
         }
 
         function closeDiagnosticModal() {
+            const missing = getMissingDiagnosticFields();
+            if (missing.length) {
+                const ok = window.confirm(`Existem informações obrigatórias pendentes:\n\n${missing.join('\n')}\n\nSe sair agora, os dados não serão salvos. Deseja realmente fechar?`);
+                if (!ok) return;
+            }
             document.getElementById('diagnostic-modal').classList.add('hidden');
         }
 
@@ -1797,6 +1819,11 @@
             const checklist = collectChecklist();
 
             try {
+                const missingDiagnostic = getMissingDiagnosticFields();
+                if (missingDiagnostic.length) {
+                    switchDiagnosticFormTab('main');
+                    throw new Error(`Preencha os dados obrigatórios do diagnóstico: ${missingDiagnostic.join(', ')}.`);
+                }
                 validateChecklist(checklist);
                 if (!mecanico) throw new Error('Selecione um mecânico responsável.');
                 if (!assinatura) throw new Error('Informe o nome completo para a assinatura digital.');
