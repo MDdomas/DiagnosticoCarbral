@@ -49,11 +49,66 @@
         ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #ef4444; }
         @media print {
-            body { background: white !important; color: black !important; }
+            @page { size: A4; margin: 10mm; }
+            html, body { background: white !important; color: black !important; }
+            body { margin: 0 !important; padding: 0 !important; }
+            body > *:not(#print-area) { display: none !important; }
             .no-print { display: none !important; }
             .print-only { display: block !important; }
+            #print-area {
+                display: block !important;
+                width: auto !important;
+                max-width: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+            }
+            .print-page {
+                break-after: page;
+                page-break-after: always;
+            }
+            .print-page:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+            .avoid-break {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-checklist-row {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
         }
         .print-only { display: none; }
+        .check-status {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 100%; min-width: 0; padding: 5px 3px; border-radius: 8px;
+            border: 1px solid #3f3f46; font-size: 9px; font-weight: 700;
+            transition: all .15s ease; white-space: nowrap;
+        }
+        .check-option-cell { padding: 5px 3px; width: 13%; }
+        .check-item-cell { width: 61%; }
+        .dashboard-option {
+            display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+            width: 100%; min-width: 0; padding: 6px 3px; border-radius: 8px;
+            border: 1px solid #3f3f46; font-size: 9px; font-weight: 700;
+            white-space: nowrap; transition: all .15s ease;
+        }
+        .dashboard-option.yes { color:#f87171; border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
+        .dashboard-option.no { color:#34d399; border-color:rgba(16,185,129,.35); background:rgba(16,185,129,.08); }
+        .check-radio:checked + .check-status, .dashboard-radio:checked + .dashboard-option {
+            box-shadow: 0 0 0 2px rgba(255,255,255,.08); transform: scale(1.02);
+        }
+        @media (max-width: 420px) {
+            .check-status, .dashboard-option { font-size: 8px; padding-left: 2px; padding-right: 2px; }
+            .check-option-cell { padding-left: 2px; padding-right: 2px; }
+            .check-item-cell { padding-left: 6px !important; padding-right: 4px !important; }
+        }
+        .check-status.good { color: #34d399; border-color: rgba(52,211,153,.35); background: rgba(16,185,129,.08); }
+        .check-status.attention { color: #facc15; border-color: rgba(250,204,21,.35); background: rgba(234,179,8,.08); }
+        .check-status.bad { color: #f87171; border-color: rgba(248,113,113,.35); background: rgba(239,68,68,.08); }
+        .check-radio:checked + .check-status { box-shadow: 0 0 0 2px rgba(239,68,68,.18); transform: translateY(-1px); }
     </style>
 </head>
 <body class="bg-darker text-zinc-100 min-h-screen flex flex-col selection:bg-red-600 selection:text-white">
@@ -145,10 +200,9 @@
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                     </div>
                     <div>
-                        <h1 class="font-bold text-base md:text-lg tracking-tight text-white"><span id="company-display-name">DiagnosticoCarbral</span></h1>
-                        <p class="text-xs text-zinc-400 flex items-center gap-1.5">
-                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            CNPJ: <strong id="company-display-cnpj" class="text-zinc-200">00.000.000/0001-00</strong>
+                        <h1 class="font-bold text-sm sm:text-base md:text-lg tracking-tight text-white max-w-[150px] sm:max-w-none truncate"><span id="company-display-name">DiagnosticoCarbral</span></h1>
+                        <p class="text-[10px] sm:text-xs text-zinc-500 max-w-[150px] sm:max-w-none truncate">
+                            <strong id="company-display-cnpj" class="text-zinc-300 font-medium">00.000.000/0001-00</strong>
                         </p>
                     </div>
                 </div>
@@ -278,7 +332,18 @@
 
             <form id="diagnostic-form" onsubmit="saveDiagnostic(event)" class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
                 <input type="hidden" id="diag-id">
-                
+
+                <!-- Abas internas do diagnóstico -->
+                <div class="flex bg-dark border border-border rounded-xl p-1 gap-1 sticky top-0 z-10">
+                    <button type="button" id="diag-subtab-main" onclick="switchDiagnosticFormTab('main')" class="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-clipboard-list"></i> Diagnóstico
+                    </button>
+                    <button type="button" id="diag-subtab-checklist" onclick="switchDiagnosticFormTab('checklist')" class="flex-1 py-2.5 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-list-check"></i> Checklist de Inspeção
+                    </button>
+                </div>
+
+                <div id="diagnostic-main-section" class="space-y-6">
                 <!-- Veículo & Info Básica -->
                 <div class="space-y-4">
                     <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2">
@@ -380,7 +445,7 @@
                         <input type="file" id="diag-files" multiple accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" class="hidden" onchange="handleFileSelect(event)">
                         <label for="diag-files" class="cursor-pointer flex flex-col items-center">
                             <i class="fa-solid fa-cloud-arrow-up text-2xl text-zinc-400 mb-2"></i>
-                            <span class="text-xs font-medium text-zinc-300">Clique para anexar arquivos (Fotos, Vídeos ou PDFs)</span>
+                            <span class="text-xs font-medium text-zinc-300">Clique para anexar arquivos (Fotos, Vídeos, PDF, Word ou Excel)</span>
                             <span class="text-[10px] text-zinc-500 mt-1">Múltiplos arquivos permitidos</span>
                         </label>
                     </div>
@@ -402,9 +467,70 @@
                         <input type="text" id="diag-signature-name" required placeholder="Ex: Carlos Alberto da Silva" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
                     </div>
                 </div>
+                </div>
+
+                <!-- Checklist de Inspeção Externa -->
+                <div id="diagnostic-checklist-section" class="hidden space-y-5">
+                    <div class="bg-card border border-border rounded-2xl p-4 sm:p-5">
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                            <div>
+                                <h4 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-car-side text-red-500"></i> Checklist de Inspeção Externa</h4>
+                                <p class="text-[10px] text-zinc-500 mt-1">Verificação visual do veículo. Os dados de placa, veículo, quilometragem e mecânico são aproveitados do diagnóstico.</p>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5 text-[9px] font-semibold">
+                                <span class="px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">● BOM</span>
+                                <span class="px-2 py-1 rounded-md bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">● ATENÇÃO</span>
+                                <span class="px-2 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20">● RUIM</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-dark border border-border rounded-xl p-3 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                            <div><span class="text-zinc-500 block">Placa</span><strong id="checklist-summary-placa" class="text-zinc-200">—</strong></div>
+                            <div><span class="text-zinc-500 block">Veículo</span><strong id="checklist-summary-veiculo" class="text-zinc-200">—</strong></div>
+                            <div><span class="text-zinc-500 block">KM</span><strong id="checklist-summary-km" class="text-zinc-200">—</strong></div>
+                            <div><span class="text-zinc-500 block">Mecânico</span><strong id="checklist-summary-mecanico" class="text-zinc-200">—</strong></div>
+                        </div>
+
+                        <div class="w-full">
+                            <table class="w-full text-xs border-collapse table-fixed">
+                                <thead>
+                                    <tr class="bg-dark border border-border">
+                                        <th class="text-left px-2 py-2.5 text-zinc-400 font-bold uppercase text-[10px] check-item-cell">Item</th>
+                                        <th class="px-1 py-2.5 text-emerald-400 font-bold text-[9px] check-option-cell">Bom</th>
+                                        <th class="px-1 py-2.5 text-yellow-300 font-bold text-[9px] check-option-cell">Atenção</th>
+                                        <th class="px-1 py-2.5 text-red-400 font-bold text-[9px] check-option-cell">Ruim</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="checklist-items-container"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 bg-dark border border-border rounded-xl p-3">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <div>
+                                    <h5 class="text-[10px] font-bold uppercase tracking-wider text-zinc-300">Painel do veículo</h5>
+                                    <p class="text-[9px] text-zinc-500 mt-0.5">Informe se cada luz de advertência está acesa.</p>
+                                </div>
+                                <div class="flex gap-1.5 text-[8px] font-semibold">
+                                    <span class="text-red-400"><i class="fa-solid fa-circle-check"></i> SIM</span>
+                                    <span class="text-emerald-400"><i class="fa-solid fa-circle-xmark"></i> NÃO</span>
+                                </div>
+                            </div>
+                            <div id="checklist-dashboard-container"></div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="block text-[10px] font-medium text-zinc-400 mb-1">Observações da inspeção externa</label>
+                            <textarea id="checklist-observacoes" rows="3" placeholder="Ex.: pneu dianteiro esquerdo com desgaste irregular; palhetas ressecadas..." class="w-full bg-dark border border-border rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></textarea>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Submit Buttons -->
-                <div class="flex items-center justify-end gap-3 pt-4 border-t border-border">
+                <div class="flex items-center justify-between gap-3 pt-4 border-t border-border">
+                    <button type="button" onclick="switchDiagnosticFormTab('checklist')" class="text-[10px] sm:text-xs text-zinc-400 hover:text-white flex items-center gap-1.5">
+                        <i class="fa-solid fa-list-check text-red-500"></i> Checklist
+                    </button>
                     <button type="button" onclick="closeDiagnosticModal()" class="bg-dark border border-border hover:bg-zinc-800 text-zinc-300 px-5 py-2.5 rounded-xl text-xs font-semibold transition-colors">
                         Cancelar
                     </button>
@@ -527,9 +653,27 @@
             "Outra": ["Modelo Genérico / Outros"]
         };
 
+        const CHECKLIST_ITEMS = [
+            { key: 'bateria', label: 'Teste de bateria' },
+            { key: 'palhetas', label: 'Palhetas / limpadores' },
+            { key: 'luzes', label: 'Lanternas, faróis e setas' },
+            { key: 'arrefecimento', label: 'Água / aditivo (arrefecimento)' },
+            { key: 'oleo', label: 'Óleo do motor' },
+            { key: 'freio', label: 'Fluido de freio' },
+            { key: 'pneus', label: 'Pneus' },
+            { key: 'ar_condicionado', label: 'Teste do ar-condicionado' }
+        ];
+
+        const CHECKLIST_DASHBOARD_ITEMS = [
+            { key: 'luz_injecao', label: 'Luz de injeção', icon: 'fa-solid fa-engine' },
+            { key: 'luz_abs', label: 'Luz de ABS', icon: 'fa-solid fa-circle-exclamation' },
+            { key: 'luz_oleo', label: 'Luz de óleo', icon: 'fa-solid fa-oil-can' },
+            { key: 'luz_bateria', label: 'Luz de bateria', icon: 'fa-solid fa-car-battery' }
+        ];
+
         // Initialize App on Load
         window.addEventListener('DOMContentLoaded', async () => {
-            await loadStoredCompanies();
+            renderChecklistItems();
             await checkSession();
         });
 
@@ -677,81 +821,50 @@
             if (!currentCompany) return;
 
             try {
-                const { data: diagRows, error: diagError } = await supabaseClient
-                    .from('diagnostics')
-                    .select('*')
-                    .eq('company_id', companyId)
-                    .order('created_at', { ascending: false });
-                if (diagError) throw diagError;
-
-                const { data: mechRows, error: mechError } = await supabaseClient
-                    .from('mechanics')
-                    .select('*')
-                    .eq('company_id', companyId)
-                    .order('created_at', { ascending: true });
-                if (mechError) throw mechError;
-
-                const [{ data: partRows, error: partError }, { data: defectRows, error: defectError }, { data: serviceRows, error: serviceError }, { data: vehicleRows, error: vehicleError }] = await Promise.all([
+                // Carrega os dados principais em paralelo para reduzir o tempo de entrada no sistema.
+                const [diagResult, mechResult, partResult, defectResult, serviceResult, vehicleResult, attachmentResult] = await Promise.all([
+                    supabaseClient.from('diagnostics').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
+                    supabaseClient.from('mechanics').select('*').eq('company_id', companyId).order('created_at', { ascending: true }),
                     supabaseClient.from('parts_catalog').select('*').order('name', { ascending: true }),
                     supabaseClient.from('defects_catalog').select('*').order('name', { ascending: true }),
                     supabaseClient.from('service_catalog').select('*').order('name', { ascending: true }),
-                    supabaseClient.from('vehicle_catalog').select('*').order('marca', { ascending: true }).order('modelo', { ascending: true })
+                    supabaseClient.from('vehicle_catalog').select('*').order('marca', { ascending: true }).order('modelo', { ascending: true }),
+                    supabaseClient.from('diagnostic_attachments').select('*').eq('company_id', companyId).order('created_at', { ascending: true })
                 ]);
-                if (partError) throw partError;
-                if (defectError) throw defectError;
-                if (serviceError) throw serviceError;
-                if (vehicleError) throw vehicleError;
 
-                partsCatalog = partRows || [];
-                defectsCatalog = defectRows || [];
-                servicesCatalog = serviceRows || [];
-                vehicleCatalog = vehicleRows || [];
+                if (diagResult.error) throw diagResult.error;
+                if (mechResult.error) throw mechResult.error;
+                if (partResult.error) throw partResult.error;
+                if (defectResult.error) throw defectResult.error;
+                if (serviceResult.error) throw serviceResult.error;
+                if (vehicleResult.error) throw vehicleResult.error;
+                if (attachmentResult.error) throw attachmentResult.error;
+
+                partsCatalog = partResult.data || [];
+                defectsCatalog = defectResult.data || [];
+                servicesCatalog = serviceResult.data || [];
+                vehicleCatalog = vehicleResult.data || [];
                 populateVehicleBrands();
                 renderCatalogLists();
 
-                const { data: attachmentRows, error: attachmentError } = await supabaseClient
-                    .from('diagnostic_attachments')
-                    .select('*')
-                    .eq('company_id', companyId)
-                    .order('created_at', { ascending: true });
-                if (attachmentError) throw attachmentError;
-
                 const attachmentMap = {};
-                (attachmentRows || []).forEach(att => {
+                (attachmentResult.data || []).forEach(att => {
                     if (!attachmentMap[att.diagnostic_id]) attachmentMap[att.diagnostic_id] = [];
                     attachmentMap[att.diagnostic_id].push({
-                        id: att.id,
-                        name: att.name,
-                        type: att.type,
-                        size: att.size,
-                        storage_path: att.storage_path
+                        id: att.id, name: att.name, type: att.type, size: att.size, storage_path: att.storage_path
                     });
                 });
 
-                diagnostics = (diagRows || []).map(row => ({
-                    id: row.id,
-                    placa: row.placa,
-                    km: row.km,
-                    marca: row.marca,
-                    modelo: row.modelo,
-                    ano: row.ano || '',
-                    pecas: row.pecas || [],
-                    servicos: row.servicos || [],
-                    mecanico: row.mecanico,
-                    assinatura: row.assinatura,
-                    data: row.data,
-                    defeitos: row.defeitos || [],
-                    observacoes: row.observacoes || '',
-                    anexos: attachmentMap[row.id] || [],
-                    status: row.status || 'Concluído',
-                    dataAtualizacao: row.data_atualizacao
+                diagnostics = (diagResult.data || []).map(row => ({
+                    id: row.id, placa: row.placa, km: row.km, marca: row.marca, modelo: row.modelo, ano: row.ano || '',
+                    pecas: row.pecas || [], servicos: row.servicos || [], checklist: row.checklist || {},
+                    mecanico: row.mecanico, assinatura: row.assinatura, data: row.data, defeitos: row.defeitos || [],
+                    observacoes: row.observacoes || '', anexos: attachmentMap[row.id] || [],
+                    status: row.status || 'Concluído', dataAtualizacao: row.data_atualizacao
                 }));
 
-                mechanics = (mechRows || []).map(row => ({
-                    id: row.id,
-                    name: row.name,
-                    specialty: row.specialty,
-                    phone: row.phone
+                mechanics = (mechResult.data || []).map(row => ({
+                    id: row.id, name: row.name, specialty: row.specialty, phone: row.phone
                 }));
             } catch (error) {
                 console.error('Erro ao carregar dados:', error);
@@ -781,6 +894,13 @@
                 modelo: 'Gol 1.6',
                 ano: '2020',
                 pecas: ['Pastilha de freio dianteira', 'Óleo do motor', 'Filtro de óleo'],
+                servicos: ['Troca de óleo do motor', 'Revisão do sistema de freios'],
+                checklist: {
+                    bateria: 'bom', palhetas: 'atencao', luzes: 'bom', arrefecimento: 'bom',
+                    oleo: 'atencao', freio: 'bom', pneus: 'atencao', ar_condicionado: 'bom',
+                    luz_injecao: 'nao', luz_abs: 'nao', luz_oleo: 'nao', luz_bateria: 'nao',
+                    observacoes: 'Exemplo de checklist inicial.'
+                },
                 mecanico: 'Carlos Silva',
                 assinatura: 'Carlos Alberto da Silva',
                 data: '03/10/2026 08:30',
@@ -806,16 +926,11 @@
 
         async function checkSession() {
             try {
-                // Em uma atualização da página, o Supabase pode precisar de um instante
-                // para restaurar a sessão persistida. Tentamos duas vezes antes de mostrar o login.
-                let session = null;
-                for (let attempt = 0; attempt < 2; attempt++) {
-                    const { data, error } = await supabaseClient.auth.getSession();
-                    if (error) throw error;
-                    session = data?.session || null;
-                    if (session) break;
-                    await new Promise(resolve => setTimeout(resolve, 350));
-                }
+                // A sessão fica persistida pelo Supabase. Não aguardamos um segundo ciclo artificial,
+                // para evitar a sensação de lentidão ao abrir o sistema.
+                const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+                if (sessionError) throw sessionError;
+                const session = sessionData?.session || null;
 
                 if (!session) {
                     showView('login');
@@ -1240,6 +1355,123 @@
             renderCatalogLists(selectedD,selectedS,selectedP); document.getElementById(config[0]).value=''; showToast(`${config[3]} salvo no sistema.`,'success');
         }
 
+        function renderChecklistItems(values = {}) {
+            const container = document.getElementById('checklist-items-container');
+            const dashboard = document.getElementById('checklist-dashboard-container');
+            if (container) {
+                container.innerHTML = CHECKLIST_ITEMS.map((item, index) => {
+                    const selected = values[item.key] || '';
+                    const options = [
+                        ['bom', 'Bom', 'emerald'],
+                        ['atencao', 'Atenção', 'yellow'],
+                        ['ruim', 'Ruim', 'red']
+                    ];
+                    return `
+                        <tr class="print-checklist-row border-x border-b border-border ${index % 2 ? 'bg-zinc-950/40' : 'bg-card'}">
+                            <td class="px-2 py-2.5 text-zinc-200 font-medium check-item-cell">${index + 1}. ${item.label}</td>
+                            ${options.map(([value, label]) => `
+                                <td class="text-center check-option-cell">
+                                    <label class="cursor-pointer inline-flex w-full">
+                                        <input class="check-radio sr-only" type="radio" name="checklist_${item.key}" value="${value}" ${selected === value ? 'checked' : ''} onchange="updateChecklistSummary()">
+                                        <span class="check-status ${value === 'bom' ? 'good' : value === 'atencao' ? 'attention' : 'bad'}">${label}</span>
+                                    </label>
+                                </td>
+                            `).join('')}
+                        </tr>
+                    `;
+                }).join('');
+            }
+            if (dashboard) {
+                dashboard.innerHTML = `
+                    <div class="grid grid-cols-[minmax(0,1fr)_70px_70px] gap-1.5 text-[9px]">
+                        <div class="px-2 py-1.5 text-zinc-500 font-bold uppercase">Item</div>
+                        <div class="text-center py-1.5 text-red-400 font-bold">SIM</div>
+                        <div class="text-center py-1.5 text-emerald-400 font-bold">NÃO</div>
+                        ${CHECKLIST_DASHBOARD_ITEMS.map((item, index) => {
+                            const selected = values[item.key] || '';
+                            return `
+                                <div class="bg-card border border-border rounded-lg px-2 py-2 text-zinc-200 font-medium flex items-center gap-1.5 min-w-0">
+                                    <i class="${item.icon} text-zinc-400 text-[10px]"></i><span class="truncate">${item.label}</span>
+                                </div>
+                                <label class="cursor-pointer inline-flex w-full">
+                                    <input class="dashboard-radio sr-only" type="radio" name="checklist_${item.key}" value="sim" ${selected === 'sim' ? 'checked' : ''}>
+                                    <span class="dashboard-option yes"><i class="fa-solid fa-circle-check"></i> Sim</span>
+                                </label>
+                                <label class="cursor-pointer inline-flex w-full">
+                                    <input class="dashboard-radio sr-only" type="radio" name="checklist_${item.key}" value="nao" ${selected === 'nao' ? 'checked' : ''}>
+                                    <span class="dashboard-option no"><i class="fa-solid fa-circle-xmark"></i> Não</span>
+                                </label>
+                            `;
+                        }).join('')}
+                    </div>`;
+            }
+            updateChecklistSummary();
+        }
+
+        function updateChecklistSummary() {
+            const placa = document.getElementById('diag-placa')?.value || '—';
+            const marca = document.getElementById('diag-marca')?.value || '';
+            const modelo = document.getElementById('diag-modelo')?.value || '';
+            const km = document.getElementById('diag-km')?.value || '—';
+            const mecanico = document.getElementById('diag-mecanico-select')?.value || '—';
+            const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+            set('checklist-summary-placa', placa);
+            set('checklist-summary-veiculo', [marca, modelo].filter(Boolean).join(' ') || '—');
+            set('checklist-summary-km', km === '—' ? '—' : `${km} KM`);
+            set('checklist-summary-mecanico', mecanico);
+        }
+
+        function switchDiagnosticFormTab(tab) {
+            const main = document.getElementById('diagnostic-main-section');
+            const checklist = document.getElementById('diagnostic-checklist-section');
+            const mainBtn = document.getElementById('diag-subtab-main');
+            const checkBtn = document.getElementById('diag-subtab-checklist');
+            if (!main || !checklist || !mainBtn || !checkBtn) return;
+
+            const active = 'flex-1 py-2.5 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center justify-center gap-2';
+            const inactive = 'flex-1 py-2.5 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center justify-center gap-2';
+            if (tab === 'checklist') {
+                main.classList.add('hidden');
+                checklist.classList.remove('hidden');
+                checkBtn.className = active;
+                mainBtn.className = inactive;
+                updateChecklistSummary();
+            } else {
+                checklist.classList.add('hidden');
+                main.classList.remove('hidden');
+                mainBtn.className = active;
+                checkBtn.className = inactive;
+            }
+        }
+
+        function collectChecklist() {
+            const result = {};
+            CHECKLIST_ITEMS.forEach(item => {
+                const selected = document.querySelector(`input[name="checklist_${item.key}"]:checked`);
+                result[item.key] = selected ? selected.value : '';
+            });
+            CHECKLIST_DASHBOARD_ITEMS.forEach(item => {
+                const selected = document.querySelector(`input[name="checklist_${item.key}"]:checked`);
+                result[item.key] = selected ? selected.value : '';
+            });
+            result.observacoes = document.getElementById('checklist-observacoes')?.value.trim() || '';
+            return result;
+        }
+
+        function validateChecklist(checklist) {
+            const missing = [...CHECKLIST_ITEMS, ...CHECKLIST_DASHBOARD_ITEMS].filter(item => !checklist[item.key]);
+            if (missing.length) {
+                switchDiagnosticFormTab('checklist');
+                throw new Error(`Preencha a avaliação do checklist: ${missing.map(x => x.label).join(', ')}.`);
+            }
+        }
+
+        function fillChecklist(values = {}) {
+            renderChecklistItems(values);
+            const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            set('checklist-observacoes', values.observacoes);
+        }
+
         // New / Edit Modal Actions
         function openNewDiagnosticModal() {
             document.getElementById('modal-title').textContent = "Novo Diagnóstico de Veículo";
@@ -1250,6 +1482,8 @@
             populateVehicleBrands();
             renderCatalogLists();
             renderAttachmentsPreview();
+            fillChecklist({});
+            switchDiagnosticFormTab('main');
             document.getElementById('diagnostic-modal').classList.remove('hidden');
         }
 
@@ -1278,6 +1512,8 @@
 
             currentTempAttachments = diag.anexos ? [...diag.anexos] : [];
             renderAttachmentsPreview();
+            fillChecklist(diag.checklist || {});
+            switchDiagnosticFormTab('main');
 
             document.getElementById('diagnostic-modal').classList.remove('hidden');
         }
@@ -1342,6 +1578,17 @@
                 </div>
                 ` : ''}
 
+                ${diag.checklist && Object.keys(diag.checklist).length ? `
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Checklist de Inspeção Externa</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        ${CHECKLIST_ITEMS.map(item => { const v = diag.checklist[item.key]; const label = v === 'bom' ? 'BOM' : v === 'atencao' ? 'ATENÇÃO' : v === 'ruim' ? 'RUIM' : '—'; const cls = v === 'bom' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' : v === 'atencao' ? 'text-yellow-300 border-yellow-500/20 bg-yellow-500/10' : 'text-red-400 border-red-500/20 bg-red-500/10'; return `<div class="bg-dark border border-border rounded-lg px-3 py-2 flex items-center justify-between text-[10px]"><span class="text-zinc-300">${item.label}</span><span class="px-2 py-1 rounded-md border ${cls} font-bold">${label}</span></div>`; }).join('')}
+                    </div>
+
+                    ${diag.checklist.observacoes ? `<p class="text-[10px] text-zinc-400 mt-2 bg-dark border border-border rounded-lg p-2">${escapeHtml(diag.checklist.observacoes)}</p>` : ''}
+                </div>
+                ` : ''}
+
                 <div class="border-t border-border pt-4 flex items-center justify-between">
                     <div>
                         <span class="text-[10px] uppercase font-semibold text-zinc-500 block">Assinatura Digital</span>
@@ -1360,7 +1607,7 @@
             document.getElementById('view-diagnostic-modal').classList.add('hidden');
         }
 
-        // Cancelar diagnóstico: exige duas confirmações e remove do histórico.
+        // Cancelar diagnóstico: uma confirmação e remoção do histórico.
         async function cancelDiagnostic(id) {
             const diag = diagnostics.find(d => d.id === id);
             if (!diag || !currentCompany) return;
@@ -1370,15 +1617,10 @@
                 return;
             }
 
-            const firstConfirm = window.confirm(
-                `Tem certeza que deseja cancelar o diagnóstico da placa ${diag.placa}?\n\nEle será removido do histórico.`
+            const confirmed = window.confirm(
+                `Tem certeza que deseja cancelar o diagnóstico da placa ${diag.placa}?\n\nO diagnóstico e seus anexos serão removidos do histórico e esta ação não poderá ser desfeita.`
             );
-            if (!firstConfirm) return;
-
-            const secondConfirm = window.confirm(
-                `SEGUNDA CONFIRMAÇÃO\n\nConfirma definitivamente o cancelamento do diagnóstico ${diag.placa}?\n\nEsta ação removerá o registro do histórico e não poderá ser desfeita.`
-            );
-            if (!secondConfirm) return;
+            if (!confirmed) return;
 
             try {
                 // Remove os arquivos do Storage primeiro.
@@ -1426,9 +1668,14 @@
                     showToast(`O arquivo "${file.name}" ultrapassa o limite de 50 MB.`, 'error');
                     continue;
                 }
+                const duplicate = currentTempAttachments.some(a => a.name === file.name && a.size === ((file.size / (1024*1024)).toFixed(1) + ' MB'));
+                if (duplicate) {
+                    showToast(`O arquivo "${file.name}" já foi adicionado.`, 'info');
+                    continue;
+                }
                 currentTempAttachments.push({
                     name: file.name,
-                    type: file.type,
+                    type: file.type || 'application/octet-stream',
                     size: (file.size / (1024*1024)).toFixed(1) + ' MB',
                     file,
                     isNew: true
@@ -1480,11 +1727,15 @@
                 }
 
                 const safeName = att.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-                const path = `${currentCompany.id}/${diagnosticId}/${Date.now()}-${safeName}`;
+                const path = `${currentCompany.id}/${diagnosticId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${safeName}`;
 
                 const { error: uploadError } = await supabaseClient.storage
                     .from('diagnostic-attachments')
-                    .upload(path, att.file, { upsert: false, contentType: att.type || 'application/octet-stream' });
+                    .upload(path, att.file, {
+                        upsert: false,
+                        cacheControl: '3600',
+                        contentType: att.type || 'application/octet-stream'
+                    });
 
                 if (uploadError) throw uploadError;
 
@@ -1543,8 +1794,10 @@
             const mecanico = document.getElementById('diag-mecanico-select').value;
             const obs = document.getElementById('diag-obs').value;
             const assinatura = document.getElementById('diag-signature-name').value.trim();
+            const checklist = collectChecklist();
 
             try {
+                validateChecklist(checklist);
                 if (!mecanico) throw new Error('Selecione um mecânico responsável.');
                 if (!assinatura) throw new Error('Informe o nome completo para a assinatura digital.');
 
@@ -1567,6 +1820,7 @@
                     placa, km, marca, modelo, ano, mecanico, assinatura,
                     pecas: selectedParts,
                     servicos: selectedServices,
+                    checklist,
                     data: existing?.data || dateStr,
                     defeitos: selectedDefects,
                     observacoes: obs,
@@ -1637,7 +1891,7 @@
 
                 const localDiagnostic = {
                     id: diagnosticId, placa, km, marca, modelo, ano, mecanico, assinatura,
-                    pecas: selectedParts, servicos: selectedServices,
+                    pecas: selectedParts, servicos: selectedServices, checklist,
                     data: row.data, defeitos: selectedDefects, observacoes: obs,
                     anexos: finalAttachments, status: row.status,
                     dataAtualizacao: row.data_atualizacao
@@ -1735,74 +1989,80 @@
             if (!diag) return;
 
             const printArea = document.getElementById('print-area');
-            let defeitosListHtml = diag.defeitos.map(d => `<li>${escapeHtml(d)}</li>`).join('');
-            let servicosListHtml = (diag.servicos || []).map(x => `<li>${escapeHtml(x)}</li>`).join('');
-            let pecasListHtml = (diag.pecas || []).map(x => `<li>${escapeHtml(x)}</li>`).join('');
+            const esc = value => escapeHtml(value ?? '');
+            const defeitos = diag.defeitos || [];
+            const servicos = diag.servicos || [];
+            const pecas = diag.pecas || [];
+            const checklist = diag.checklist || {};
+            const checklistRows = CHECKLIST_ITEMS.map((item, index) => {
+                const v = checklist[item.key] || '';
+                const label = v === 'bom' ? 'BOM' : v === 'atencao' ? 'ATENÇÃO' : v === 'ruim' ? 'RUIM' : 'NÃO INFORMADO';
+                const bg = v === 'bom' ? '#dcfce7' : v === 'atencao' ? '#fef9c3' : v === 'ruim' ? '#fee2e2' : '#f3f4f6';
+                const color = v === 'bom' ? '#166534' : v === 'atencao' ? '#854d0e' : v === 'ruim' ? '#991b1b' : '#4b5563';
+                return `<tr class="print-checklist-row"><td style="padding:7px 8px; border:1px solid #ddd; font-size:11px;">${index + 1}. ${esc(item.label)}</td><td style="padding:7px 8px; border:1px solid #ddd; text-align:center; font-size:10px; font-weight:bold; background:${bg}; color:${color};">${label}</td></tr>`;
+            }).join('');
+            const dashboardRows = CHECKLIST_DASHBOARD_ITEMS.map((item, index) => {
+                const v = checklist[item.key] || '';
+                const label = v === 'sim' ? 'SIM' : v === 'nao' ? 'NÃO' : 'NÃO INFORMADO';
+                const bg = v === 'sim' ? '#fee2e2' : v === 'nao' ? '#dcfce7' : '#f3f4f6';
+                const color = v === 'sim' ? '#991b1b' : v === 'nao' ? '#166534' : '#4b5563';
+                return `<tr class="print-checklist-row"><td style="padding:7px 8px;border:1px solid #ddd;font-size:11px;">${index + 1}. ${esc(item.label)}</td><td style="padding:7px 8px;border:1px solid #ddd;text-align:center;font-size:10px;font-weight:bold;background:${bg};color:${color};">${label}</td></tr>`;
+            }).join('');
+
+            const listSection = (title, items) => `
+                <div class="avoid-break" style="margin-bottom:14px;">
+                    <h3 style="font-size:13px; border-bottom:1px solid #ccc; padding-bottom:5px; color:#333; margin:0 0 6px;">${title}</h3>
+                    <ul style="margin:6px 0; padding-left:18px; font-size:11px; line-height:1.45;">
+                        ${items.length ? items.map(x => `<li>${esc(x)}</li>`).join('') : '<li>Nenhum item informado.</li>'}
+                    </ul>
+                </div>`;
 
             printArea.innerHTML = `
-                <div style="font-family: Arial, sans-serif; color: #111; padding: 20px;">
-                    <div style="border-bottom: 3px solid #ef4444; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-family:Arial,sans-serif;color:#111;font-size:11px;">
+                    <div class="avoid-break" style="border-bottom:3px solid #ef4444;padding-bottom:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:15px;">
                         <div>
-                            <h1 style="margin: 0; font-size: 22px; font-weight: bold; color: #000;">DIAGNÓSTICO AUTOMOTIVO</h1>
-                            <p style="margin: 2px 0 0 0; font-size: 14px; color: #ef4444; font-weight: bold;">${currentCompany ? currentCompany.name : 'OFICINA MECÂNICA'} - CNPJ: ${currentCompany ? currentCompany.cnpj : ''}</p>
+                            <h1 style="margin:0;font-size:20px;font-weight:bold;color:#000;">DIAGNÓSTICO AUTOMOTIVO</h1>
+                            <p style="margin:2px 0 0;font-size:11px;color:#ef4444;font-weight:bold;">${esc(currentCompany ? currentCompany.name : 'OFICINA MECÂNICA')}</p>
+                            <p style="margin:1px 0 0;font-size:10px;color:#555;">CNPJ: ${esc(currentCompany ? currentCompany.cnpj : '')}</p>
                         </div>
-                        <div style="text-align: right;">
-                            <span style="font-size: 14px; font-weight: bold; background: #eee; padding: 4px 10px; border-radius: 4px;">PLACA: ${diag.placa}</span>
+                        <div style="text-align:right;white-space:nowrap;">
+                            <span style="font-size:12px;font-weight:bold;background:#eee;padding:4px 8px;border-radius:4px;">PLACA: ${esc(diag.placa)}</span>
                         </div>
                     </div>
 
-                    <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <tr>
-                                <td style="padding: 4px 0;"><strong>Marca / Modelo:</strong> ${diag.marca} ${diag.modelo}</td>
-                                <td style="padding: 4px 0;"><strong>Quilometragem:</strong> ${diag.km} KM</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 4px 0;"><strong>Data da Inspeção:</strong> ${diag.data}</td>
-                                <td style="padding: 4px 0;"><strong>Mecânico Responsável:</strong> ${diag.mecanico}</td>
-                            </tr>
+                    <div class="avoid-break" style="background:#f9f9f9;border:1px solid #ddd;padding:10px;border-radius:6px;margin-bottom:12px;">
+                        <table style="width:100%;border-collapse:collapse;font-size:10.5px;">
+                            <tr><td style="padding:3px 0;"><strong>Marca / Modelo:</strong> ${esc(diag.marca)} ${esc(diag.modelo)}</td><td style="padding:3px 0;"><strong>Ano:</strong> ${esc(diag.ano || '—')}</td></tr>
+                            <tr><td style="padding:3px 0;"><strong>Quilometragem:</strong> ${esc(diag.km)} KM</td><td style="padding:3px 0;"><strong>Mecânico:</strong> ${esc(diag.mecanico)}</td></tr>
+                            <tr><td style="padding:3px 0;"><strong>Data da Inspeção:</strong> ${esc(diag.data)}</td><td style="padding:3px 0;"><strong>Assinatura:</strong> ${esc(diag.assinatura)}</td></tr>
                         </table>
                     </div>
 
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 6px; color: #333;">Defeitos e Problemas Constatados</h3>
-                        <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
-                            ${defeitosListHtml || '<li>Nenhum defeito específico assinalado.</li>'}
-                        </ul>
+                    ${listSection('Defeitos e Problemas Constatados', defeitos)}
+                    ${listSection('Serviços a Serem Efetuados', servicos)}
+                    ${listSection('Peças a Serem Substituídas', pecas)}
+
+                    <div class="avoid-break" style="margin-bottom:14px;">
+                        <h3 style="font-size:13px;border-bottom:1px solid #ccc;padding-bottom:5px;color:#333;margin:0 0 7px;">Checklist de Inspeção Externa</h3>
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead><tr><th style="padding:7px 8px;border:1px solid #ddd;text-align:left;background:#eef1f4;font-size:10px;">ITEM</th><th style="padding:7px 8px;border:1px solid #ddd;background:#eef1f4;font-size:10px;">AVALIAÇÃO</th></tr></thead>
+                            <tbody>${checklistRows}</tbody>
+                        </table>
+                        <div style="margin-top:9px;"><h4 style="font-size:11px;margin:0 0 5px;color:#333;">Painel do veículo</h4><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:6px 8px;border:1px solid #ddd;text-align:left;background:#eef1f4;font-size:9px;">LUZ</th><th style="padding:6px 8px;border:1px solid #ddd;background:#eef1f4;font-size:9px;">STATUS</th></tr></thead><tbody>${dashboardRows}</tbody></table></div>
+                        ${checklist.observacoes ? `<div style="margin-top:6px;padding:7px;border:1px solid #eee;background:#fafafa;line-height:1.4;"><strong>Observações da inspeção:</strong> ${esc(checklist.observacoes)}</div>` : ''}
                     </div>
 
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 6px; color: #333;">Serviços a Serem Efetuados</h3>
-                        <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">${servicosListHtml}</ul>
-                    </div>
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 6px; color: #333;">Peças a Serem Substituídas</h3>
-                        <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">${pecasListHtml}</ul>
-                    </div>
+                    ${diag.observacoes ? `<div class="avoid-break" style="margin-bottom:14px;"><h3 style="font-size:13px;border-bottom:1px solid #ccc;padding-bottom:5px;color:#333;margin:0 0 6px;">Observações Técnicas / Relato</h3><p style="font-size:11px;background:#fdfdfd;border:1px solid #eee;padding:8px;border-radius:5px;line-height:1.45;margin:0;">${esc(diag.observacoes)}</p></div>` : ''}
 
-                    ${diag.observacoes ? `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 6px; color: #333;">Observações Técnicas / Relato</h3>
-                        <p style="font-size: 13px; background: #fdfdfd; border: 1px solid #eee; padding: 10px; border-radius: 6px; line-height: 1.5;">${diag.observacoes}</p>
-                    </div>
-                    ` : ''}
-
-                    <div style="margin-top: 40px; border-top: 1px solid #ccc; padding-top: 20px; display: flex; justify-content: space-between; font-size: 11px; color: #666;">
-                        <div>
-                            <p>Documento gerado digitalmente pelo sistema <strong>DiagnosticoCarbral</strong>.</p>
-                            <p>Este relatório destina-se ao cliente para fins de orçamento e aprovação de reparos.</p>
-                        </div>
-                        <div style="text-align: center; width: 220px;">
-                            <div style="border-bottom: 1px solid #333; height: 35px; margin-bottom: 5px;"></div>
-                            <span style="font-weight: bold; display: block;">${diag.assinatura}</span>
-                            <span>Assinatura do Mecânico Responsável</span>
-                        </div>
+                    <div class="avoid-break" style="margin-top:18px;border-top:1px solid #ccc;padding-top:12px;display:flex;justify-content:space-between;gap:20px;font-size:9px;color:#666;">
+                        <div><p style="margin:0 0 4px;">Documento gerado digitalmente pelo sistema <strong>DiagnosticoCarbral</strong>.</p><p style="margin:0;">Este relatório destina-se ao cliente para fins de orçamento e aprovação de reparos.</p></div>
+                        <div style="text-align:center;width:190px;min-width:190px;"><div style="border-bottom:1px solid #333;height:25px;margin-bottom:4px;"></div><span style="font-weight:bold;display:block;">${esc(diag.assinatura)}</span><span>Assinatura do Mecânico Responsável</span></div>
                     </div>
                 </div>
             `;
 
             window.print();
-            showToast('PDF gerado para compartilhamento!', 'success');
+            showToast('Laudo preparado para impressão/PDF.', 'success');
         }
 
         // Toast Notification system
