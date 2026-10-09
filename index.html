@@ -426,13 +426,7 @@
                     </div>
 
                     <div class="bg-card border border-border rounded-xl p-4 space-y-3">
-                        <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2"><i class="fa-solid fa-screwdriver-wrench"></i> 2. Serviços a Serem Efetuados</h4><span id="service-selection-count" class="text-[10px] text-zinc-500">0 selecionados</span></div>
-                        <div class="flex gap-2"><div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i><input id="service-search" oninput="filterCatalogList('service')" type="text" placeholder="Pesquisar serviço..." class="w-full bg-dark border border-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div><button type="button" onclick="addCatalogItem('service')" class="bg-dark border border-border hover:border-red-500 text-zinc-300 hover:text-white px-3 rounded-xl" title="Cadastrar novo serviço"><i class="fa-solid fa-plus"></i></button></div>
-                        <div id="services-list" class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
-                    </div>
-
-                    <div class="bg-card border border-border rounded-xl p-4 space-y-3">
-                        <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2"><i class="fa-solid fa-gears"></i> 3. Peças a Serem Substituídas</h4><span id="part-selection-count" class="text-[10px] text-zinc-500">0 selecionadas</span></div>
+                        <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2"><i class="fa-solid fa-gears"></i> 2. Peças a Serem Substituídas</h4><span id="part-selection-count" class="text-[10px] text-zinc-500">0 selecionadas</span></div>
                         <div class="flex gap-2"><div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i><input id="part-search" oninput="filterCatalogList('part')" type="text" placeholder="Pesquisar peça..." class="w-full bg-dark border border-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div><button type="button" onclick="addCatalogItem('part')" class="bg-dark border border-border hover:border-red-500 text-zinc-300 hover:text-white px-3 rounded-xl" title="Cadastrar nova peça"><i class="fa-solid fa-plus"></i></button></div>
                         <div id="parts-list" class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
                     </div>
@@ -608,6 +602,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        const APP_VERSION = '2026.10.08.3';
         const SUPABASE_URL = "https://eyricdzytukgqbighvky.supabase.co";
         const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PATJFNJp5oVWz10nSyEseg_fArltTfn";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -627,7 +622,6 @@
         let savingDiagnostic = false;
         let partsCatalog = [];
         let defectsCatalog = [];
-        let servicesCatalog = [];
         let vehicleCatalog = [];
 
         // Common pre-registered defects
@@ -678,6 +672,11 @@
 
         // Initialize App on Load
         window.addEventListener('DOMContentLoaded', async () => {
+            installPullToRefreshGuard();
+            checkAppVersion();
+            startRemoteVersionCheck();
+            document.getElementById('diagnostic-form')?.addEventListener('input', saveDiagnosticDraft);
+            document.getElementById('diagnostic-form')?.addEventListener('change', saveDiagnosticDraft);
             renderChecklistItems();
             formatCnpjField(document.getElementById('login-cnpj'));
             formatCnpjField(document.getElementById('reg-cnpj'));
@@ -840,12 +839,11 @@
 
             try {
                 // Carrega os dados principais em paralelo para reduzir o tempo de entrada no sistema.
-                const [diagResult, mechResult, partResult, defectResult, serviceResult, vehicleResult, attachmentResult] = await Promise.all([
+                const [diagResult, mechResult, partResult, defectResult, vehicleResult, attachmentResult] = await Promise.all([
                     supabaseClient.from('diagnostics').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
                     supabaseClient.from('mechanics').select('*').eq('company_id', companyId).order('created_at', { ascending: true }),
                     supabaseClient.from('parts_catalog').select('*').order('name', { ascending: true }),
                     supabaseClient.from('defects_catalog').select('*').order('name', { ascending: true }),
-                    supabaseClient.from('service_catalog').select('*').order('name', { ascending: true }),
                     supabaseClient.from('vehicle_catalog').select('*').order('marca', { ascending: true }).order('modelo', { ascending: true }),
                     supabaseClient.from('diagnostic_attachments').select('*').eq('company_id', companyId).order('created_at', { ascending: true })
                 ]);
@@ -854,13 +852,11 @@
                 if (mechResult.error) throw mechResult.error;
                 if (partResult.error) throw partResult.error;
                 if (defectResult.error) throw defectResult.error;
-                if (serviceResult.error) throw serviceResult.error;
                 if (vehicleResult.error) throw vehicleResult.error;
                 if (attachmentResult.error) throw attachmentResult.error;
 
                 partsCatalog = partResult.data || [];
                 defectsCatalog = defectResult.data || [];
-                servicesCatalog = serviceResult.data || [];
                 vehicleCatalog = vehicleResult.data || [];
                 populateVehicleBrands();
                 renderCatalogLists();
@@ -875,7 +871,7 @@
 
                 diagnostics = (diagResult.data || []).map(row => ({
                     id: row.id, placa: row.placa, km: row.km, marca: row.marca, modelo: row.modelo, ano: row.ano || '',
-                    pecas: row.pecas || [], servicos: row.servicos || [], checklist: row.checklist || {},
+                    pecas: row.pecas || [], checklist: row.checklist || {},
                     mecanico: row.mecanico, assinatura: row.assinatura, data: row.data, defeitos: row.defeitos || [],
                     observacoes: row.observacoes || '', anexos: attachmentMap[row.id] || [],
                     status: row.status || 'Concluído', dataAtualizacao: row.data_atualizacao
@@ -1166,10 +1162,6 @@
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <span class="text-[10px] uppercase font-semibold text-zinc-500 block mb-1">Serviços:</span>
-                                <div class="flex flex-wrap gap-1">${(diag.servicos || []).slice(0,3).map(x => `<span class="inline-block bg-zinc-900 border border-border text-zinc-300 text-[10px] px-2 py-0.5 rounded-md">${escapeHtml(x)}</span>`).join('')}</div>
-                            </div>
                             <div class="mb-4">
                                 <span class="text-[10px] uppercase font-semibold text-zinc-500 block mb-1">Peças:</span>
                                 <div class="flex flex-wrap gap-1">${(diag.pecas || []).slice(0,3).map(x => `<span class="inline-block bg-zinc-900 border border-border text-zinc-300 text-[10px] px-2 py-0.5 rounded-md">${escapeHtml(x)}</span>`).join('')}</div>
@@ -1225,7 +1217,7 @@
             showToast('IA selecionou defeitos comuns com base no histórico!', 'success');
         }
 
-        // Catálogos de veículos, defeitos, serviços e peças
+        // Catálogos de veículos, defeitos e peças
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
         }
@@ -1295,49 +1287,53 @@
 
         function selectedValues(name) { return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(x => x.value); }
 
-        function renderCatalogLists(selectedDefects = [], selectedServices = [], selectedParts = []) {
+        function renderCatalogLists(selectedDefects = [], selectedParts = []) {
             const defectContainer = document.getElementById('predef-list');
-            const serviceContainer = document.getElementById('services-list');
             const partContainer = document.getElementById('parts-list');
-            if (!defectContainer || !serviceContainer || !partContainer) return;
+            if (!defectContainer || !partContainer) return;
             const qDef = (document.getElementById('defect-search')?.value || '').toLowerCase().trim();
-            const qSvc = (document.getElementById('service-search')?.value || '').toLowerCase().trim();
             const qPart = (document.getElementById('part-search')?.value || '').toLowerCase().trim();
             const filter = (item,q) => !q || `${item.name} ${item.category || ''}`.toLowerCase().includes(q);
-            const label = (item,name,selected) => `<label class="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="${name}" value="${escapeHtml(item.name)}" ${selected.includes(item.name) ? 'checked' : ''} onchange="updateSelectionCounts()" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span><span>${escapeHtml(item.name)}</span>${item.category ? `<small class="block text-[9px] text-zinc-500">${escapeHtml(item.category)}</small>` : ''}</span></label>`;
-            const defs = defectsCatalog.filter(x => filter(x,qDef));
-            const svcs = servicesCatalog.filter(x => filter(x,qSvc));
-            const parts = partsCatalog.filter(x => filter(x,qPart));
-            defectContainer.innerHTML = defs.length ? defs.map(x => label(x,'predef_defect',selectedDefects)).join('') : '<span class="text-xs text-zinc-500">Nenhum defeito encontrado.</span>';
-            serviceContainer.innerHTML = svcs.length ? svcs.map(x => label(x,'catalog_service',selectedServices)).join('') : '<span class="text-xs text-zinc-500">Nenhum serviço encontrado.</span>';
-            partContainer.innerHTML = parts.length ? parts.map(x => label(x,'catalog_part',selectedParts)).join('') : '<span class="text-xs text-zinc-500">Nenhuma peça encontrada.</span>';
+            const label = (item,name,selected) => `<label class="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="${name}" value="${escapeHtml(item.name)}" ${selected.includes(item.name) ? 'checked' : ''} onchange="updateSelectionCounts(); saveDiagnosticDraft()" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span><span>${escapeHtml(item.name)}</span>${item.category ? `<small class="block text-[9px] text-zinc-500">${escapeHtml(item.category)}</small>` : ''}</span></label>`;
+            const renderItems = (catalog, query, selected, name, empty, limit=100) => {
+                const filtered = catalog.filter(x => filter(x, query));
+                const selectedItems = filtered.filter(x => selected.includes(x.name));
+                const shown = [...selectedItems, ...filtered.filter(x => !selected.includes(x.name))].slice(0, limit);
+                return (shown.length ? shown.map(x => label(x,name,selected)).join('') : `<span class="text-xs text-zinc-500">${empty}</span>`) + (filtered.length > limit ? `<span class="text-[10px] text-zinc-500 col-span-full">Exibindo ${limit} de ${filtered.length}. Digite mais letras para refinar a pesquisa.</span>` : '');
+            };
+            defectContainer.innerHTML = renderItems(defectsCatalog, qDef, selectedDefects, 'predef_defect', 'Nenhum defeito encontrado.');
+            partContainer.innerHTML = renderItems(partsCatalog, qPart, selectedParts, 'catalog_part', 'Nenhuma peça encontrada.');
             updateSelectionCounts();
         }
 
-        function filterCatalogList() {
-            renderCatalogLists(selectedValues('predef_defect'), selectedValues('catalog_service'), selectedValues('catalog_part'));
+        let catalogSearchTimer = null;
+        function filterCatalogList(type) {
+            clearTimeout(catalogSearchTimer);
+            catalogSearchTimer = setTimeout(() => renderCatalogLists(selectedValues('predef_defect'), selectedValues('catalog_part')), 100);
         }
 
         function updateSelectionCounts() {
-            const d = selectedValues('predef_defect').length, s = selectedValues('catalog_service').length, p = selectedValues('catalog_part').length;
+            const d = selectedValues('predef_defect').length, p = selectedValues('catalog_part').length;
             const set = (id,text) => { const el=document.getElementById(id); if(el) el.textContent=text; };
-            set('defect-selection-count', `${d} selecionado${d===1?'':'s'}`); set('service-selection-count', `${s} selecionado${s===1?'':'s'}`); set('part-selection-count', `${p} selecionada${p===1?'':'s'}`);
+            set('defect-selection-count', `${d} selecionado${d===1?'':'s'}`); set('part-selection-count', `${p} selecionada${p===1?'':'s'}`);
         }
 
         async function addCatalogItem(type) {
             if (!currentCompany) return;
-            const config = {defect:['defect-search','defects_catalog','defectsCatalog','Defeito'],service:['service-search','service_catalog','servicesCatalog','Serviço'],part:['part-search','parts_catalog','partsCatalog','Peça']}[type];
+            const config = {defect:['defect-search','defects_catalog','defectsCatalog','Defeito'],part:['part-search','parts_catalog','partsCatalog','Peça']}[type];
+            if (!config) return;
             const query = document.getElementById(config[0]).value.trim();
             const name = prompt(`Digite o nome do novo ${config[3].toLowerCase()}:`, query);
             if (!name || !name.trim()) return;
-            const clean = name.trim(), list = type === 'defect' ? defectsCatalog : type === 'service' ? servicesCatalog : partsCatalog;
+            const clean = name.trim(), list = type === 'defect' ? defectsCatalog : partsCatalog;
             if (list.some(item => item.name.toLowerCase() === clean.toLowerCase())) { showToast('Esse item já está cadastrado.', 'info'); return; }
             const {data,error}=await supabaseClient.from(config[1]).insert({company_id:currentCompany.id,name:clean,category:'Personalizado'}).select('*').single();
             if(error){console.error(error);showToast(`Não foi possível salvar o ${config[3].toLowerCase()}.`,'error');return;}
             list.push(data); list.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
-            const selectedD=selectedValues('predef_defect'), selectedS=selectedValues('catalog_service'), selectedP=selectedValues('catalog_part');
-            if(type==='defect') selectedD.push(clean); if(type==='service') selectedS.push(clean); if(type==='part') selectedP.push(clean);
-            renderCatalogLists(selectedD,selectedS,selectedP); document.getElementById(config[0]).value=''; showToast(`${config[3]} salvo no sistema.`,'success');
+            const selectedD=selectedValues('predef_defect'), selectedP=selectedValues('catalog_part');
+            if(type==='defect') selectedD.push(clean); if(type==='part') selectedP.push(clean);
+            renderCatalogLists(selectedD,selectedP); document.getElementById(config[0]).value=''; showToast(`${config[3]} salvo no sistema.`,'success');
+            saveDiagnosticDraft();
         }
 
         function renderChecklistItems(values = {}) {
@@ -1416,7 +1412,6 @@
             if (!get('diag-modelo')) missing.push('Modelo');
             if (!get('diag-mecanico-select')) missing.push('Mecânico responsável');
             if (selectedValues('predef_defect').length === 0) missing.push('ao menos 1 defeito');
-            if (selectedValues('catalog_service').length === 0) missing.push('ao menos 1 serviço');
             if (selectedValues('catalog_part').length === 0) missing.push('ao menos 1 peça');
             if (!get('diag-signature-name')) missing.push('Nome completo para assinatura');
             return missing;
@@ -1489,6 +1484,80 @@
             set('checklist-observacoes', values.observacoes);
         }
 
+        // Rascunho local: preserva os campos e seleções mesmo se a aba for fechada.
+        function diagnosticDraftKey() { return `diagnostic-draft-${currentCompany?.id || 'unknown'}`; }
+        function saveDiagnosticDraft() {
+            if (!currentCompany || document.getElementById('diagnostic-modal')?.classList.contains('hidden')) return;
+            try {
+                const fields = {};
+                ['diag-id','diag-placa','diag-km','diag-marca','diag-modelo','diag-ano','diag-mecanico-select','diag-obs','diag-signature-name','checklist-observacoes'].forEach(id => {
+                    const el = document.getElementById(id); if (el) fields[id] = el.value;
+                });
+                const draft = {savedAt: new Date().toISOString(), fields,
+                    defects: selectedValues('predef_defect'), parts: selectedValues('catalog_part'),
+                    checklist: collectChecklist(), tab: document.getElementById('diagnostic-checklist-section')?.classList.contains('hidden') ? 'main' : 'checklist',
+                    attachments: currentTempAttachments.filter(a => !a.isNew).map(a => ({id:a.id,name:a.name,type:a.type,size:a.size,storage_path:a.storage_path}))};
+                localStorage.setItem(diagnosticDraftKey(), JSON.stringify(draft));
+            } catch (err) { console.warn('Não foi possível salvar o rascunho local.', err); }
+        }
+        function clearDiagnosticDraft() { if (currentCompany) localStorage.removeItem(diagnosticDraftKey()); }
+        function restoreDiagnosticDraft() {
+            if (!currentCompany) return false;
+            try {
+                const raw = localStorage.getItem(diagnosticDraftKey()); if (!raw) return false;
+                const draft = JSON.parse(raw); if (!draft?.fields) return false;
+                const age = Date.now() - new Date(draft.savedAt || 0).getTime();
+                if (!Number.isFinite(age) || age > 7*24*60*60*1000) { clearDiagnosticDraft(); return false; }
+                Object.entries(draft.fields).forEach(([id,value]) => { const el=document.getElementById(id); if (el) el.value=value ?? ''; });
+                populateVehicleBrands(draft.fields['diag-marca'] || ''); onBrandChange(draft.fields['diag-modelo'] || '');
+                populateMechanicsSelect(draft.fields['diag-mecanico-select'] || '');
+                renderCatalogLists(draft.defects || [], draft.parts || []);
+                fillChecklist(draft.checklist || {});
+                currentTempAttachments = draft.attachments || []; renderAttachmentsPreview();
+                switchDiagnosticFormTab(draft.tab === 'checklist' ? 'checklist' : 'main');
+                showToast('Rascunho anterior restaurado.', 'info');
+                return true;
+            } catch (err) { console.warn('Rascunho inválido.', err); return false; }
+        }
+        function checkAppVersion() {
+            const key = 'diagnostic-app-version';
+            const previous = localStorage.getItem(key);
+            if (previous && previous !== APP_VERSION) {
+                sessionStorage.setItem('diagnostic-version-notice', APP_VERSION);
+                setTimeout(() => showToast('O DiagnosticoCarbral foi atualizado. Saia da conta e entre novamente para carregar a nova versão.', 'info'), 900);
+            }
+            localStorage.setItem(key, APP_VERSION);
+        }
+        function startRemoteVersionCheck() {
+            if (!/^https?:$/.test(window.location.protocol)) return;
+            setInterval(async () => {
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('_version_check', String(Date.now()));
+                    const response = await fetch(url.toString(), { cache: 'no-store' });
+                    if (!response.ok) return;
+                    const html = await response.text();
+                    const match = html.match(/const\s+APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]/);
+                    if (match && match[1] !== APP_VERSION && sessionStorage.getItem('diagnostic-update-alerted') !== match[1]) {
+                        sessionStorage.setItem('diagnostic-update-alerted', match[1]);
+                        showToast('Há uma nova atualização do DiagnosticoCarbral. Salve/feche o diagnóstico, saia da conta e entre novamente para carregar a nova versão.', 'info');
+                    }
+                } catch (err) { /* Verificação silenciosa quando estiver offline. */ }
+            }, 60000);
+        }
+
+        function installPullToRefreshGuard() {
+            document.documentElement.style.overscrollBehaviorY = 'none';
+            document.body.style.overscrollBehaviorY = 'none';
+            let startY = 0;
+            document.addEventListener('touchstart', e => { if (e.touches?.length) startY = e.touches[0].clientY; }, {passive:true});
+            document.addEventListener('touchmove', e => {
+                if (!e.touches?.length) return;
+                const y = e.touches[0].clientY;
+                if (window.scrollY <= 0 && y > startY && e.cancelable) e.preventDefault();
+            }, {passive:false});
+        }
+
         // New / Edit Modal Actions
         function openNewDiagnosticModal() {
             document.getElementById('modal-title').textContent = "Novo Diagnóstico de Veículo";
@@ -1502,12 +1571,13 @@
             fillChecklist({});
             switchDiagnosticFormTab('main');
             document.getElementById('diagnostic-modal').classList.remove('hidden');
+            restoreDiagnosticDraft();
         }
 
         function closeDiagnosticModal() {
             const missing = getMissingDiagnosticFields();
             if (missing.length) {
-                const ok = window.confirm(`Existem informações obrigatórias pendentes:\n\n${missing.join('\n')}\n\nSe sair agora, os dados não serão salvos. Deseja realmente fechar?`);
+                const ok = window.confirm(`Existem informações obrigatórias pendentes:\n\n${missing.join('\n')}\n\nSeu rascunho ficará salvo neste dispositivo e poderá ser retomado depois. Deseja fechar agora?`);
                 if (!ok) return;
             }
             document.getElementById('diagnostic-modal').classList.add('hidden');
@@ -1530,7 +1600,7 @@
             populateMechanicsSelect(diag.mecanico);
 
             // Check predef defects
-            renderCatalogLists(diag.defeitos || [], diag.servicos || [], diag.pecas || []);
+            renderCatalogLists(diag.defeitos || [], diag.pecas || []);
 
             currentTempAttachments = diag.anexos ? [...diag.anexos] : [];
             renderAttachmentsPreview();
@@ -1576,13 +1646,6 @@
                     <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Defeitos Constatados</h4>
                     <ul class="list-disc pl-5 space-y-1 text-xs bg-dark p-3 rounded-xl border border-border">
                         ${defeitosList || '<span class="text-zinc-500 italic">Nenhum defeito registrado</span>'}
-                    </ul>
-                </div>
-
-                <div>
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Serviços a Serem Efetuados</h4>
-                    <ul class="list-disc pl-5 space-y-1 text-xs bg-dark p-3 rounded-xl border border-border">
-                        ${(diag.servicos || []).map(s => `<li class="text-zinc-300">${escapeHtml(s)}</li>`).join('') || '<span class="text-zinc-500 italic">Nenhum serviço selecionado</span>'}
                     </ul>
                 </div>
 
@@ -1829,11 +1892,9 @@
                 if (!assinatura) throw new Error('Informe o nome completo para a assinatura digital.');
 
                 const selectedDefects = selectedValues('predef_defect');
-                const selectedServices = selectedValues('catalog_service');
                 const selectedParts = selectedValues('catalog_part');
 
                 if (selectedDefects.length === 0) throw new Error('Selecione pelo menos 1 defeito encontrado.');
-                if (selectedServices.length === 0) throw new Error('Selecione pelo menos 1 serviço a ser efetuado.');
                 if (selectedParts.length === 0) throw new Error('Selecione pelo menos 1 peça a ser substituída.');
 
                 const now = new Date();
@@ -1846,7 +1907,6 @@
                     company_id: currentCompany.id,
                     placa, km, marca, modelo, ano, mecanico, assinatura,
                     pecas: selectedParts,
-                    servicos: selectedServices,
                     checklist,
                     data: existing?.data || dateStr,
                     defeitos: selectedDefects,
@@ -1918,7 +1978,7 @@
 
                 const localDiagnostic = {
                     id: diagnosticId, placa, km, marca, modelo, ano, mecanico, assinatura,
-                    pecas: selectedParts, servicos: selectedServices, checklist,
+                    pecas: selectedParts, checklist,
                     data: row.data, defeitos: selectedDefects, observacoes: obs,
                     anexos: finalAttachments, status: row.status,
                     dataAtualizacao: row.data_atualizacao
@@ -1937,6 +1997,7 @@
                         : 'Novo diagnóstico lançado com sucesso!', attachmentErrors.length ? 'info' : 'success');
                 }
 
+                clearDiagnosticDraft();
                 closeDiagnosticModal();
                 renderDiagnosticsList();
             } catch (error) {
@@ -2018,7 +2079,6 @@
             const printArea = document.getElementById('print-area');
             const esc = value => escapeHtml(value ?? '');
             const defeitos = diag.defeitos || [];
-            const servicos = diag.servicos || [];
             const pecas = diag.pecas || [];
             const checklist = diag.checklist || {};
             const checklistRows = CHECKLIST_ITEMS.map((item, index) => {
@@ -2066,7 +2126,6 @@
                     </div>
 
                     ${listSection('Defeitos e Problemas Constatados', defeitos)}
-                    ${listSection('Serviços a Serem Efetuados', servicos)}
                     ${listSection('Peças a Serem Substituídas', pecas)}
 
                     <div class="avoid-break" style="margin-bottom:14px;">
