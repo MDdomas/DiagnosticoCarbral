@@ -80,6 +80,9 @@
                 page-break-inside: avoid;
             }
         }
+        .diagnostic-scroll { -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: contain; }
+        #diagnostic-modal { touch-action: pan-y; }
+        #diagnostic-modal .overflow-y-auto { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
         .print-only { display: none; }
         .check-status {
             display: inline-flex; align-items: center; justify-content: center;
@@ -329,7 +332,7 @@
                 </button>
             </div>
 
-            <form id="diagnostic-form" novalidate onsubmit="saveDiagnostic(event)" class="p-4 sm:p-6 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <form id="diagnostic-form" novalidate onsubmit="saveDiagnostic(event)" class="p-4 sm:p-6 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain diagnostic-scroll">
                 <input type="hidden" id="diag-id">
 
                 <!-- Abas internas do diagnóstico -->
@@ -350,14 +353,18 @@
                     </h4>
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="md:col-span-2">
+                        <div>
                             <label class="block text-xs font-medium text-zinc-300 mb-1">Placa do Veículo *</label>
                             <input type="text" id="diag-placa" required placeholder="ABC-1D23" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm uppercase text-zinc-200 focus:outline-none focus:border-red-500">
-                            <p class="text-[10px] text-zinc-500 mt-1">A placa será registrada no diagnóstico. Marca, modelo e ano são selecionados manualmente.</p>
+                            <p class="text-[10px] text-zinc-500 mt-1">Marca, modelo e ano são selecionados manualmente.</p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-zinc-300 mb-1">Quilometragem (KM) *</label>
                             <input type="number" id="diag-km" required placeholder="Ex: 45000" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-300 mb-1">Chassi <span class="text-zinc-500 font-normal">(opcional)</span></label>
+                            <input type="text" id="diag-chassi" maxlength="50" placeholder="Número do chassi" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm uppercase text-zinc-200 focus:outline-none focus:border-red-500">
                         </div>
                     </div>
 
@@ -385,10 +392,12 @@
                             <i class="fa-solid fa-plus"></i> Cadastrar nova marca e modelo
                         </button>
                     </div>
-                    <div id="new-vehicle-form" class="hidden bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-end">
-                        <div><label class="block text-[10px] text-zinc-400 mb-1">Nova marca</label><input id="new-brand-name" type="text" placeholder="Ex: BYD" class="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div>
-                        <div><label class="block text-[10px] text-zinc-400 mb-1">Novo modelo</label><input id="new-model-name" type="text" placeholder="Ex: Dolphin Mini" class="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div>
-                        <button type="button" onclick="addVehicleCatalogItem()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl">Salvar</button>
+                    <div id="new-vehicle-form" class="hidden bg-dark border border-border rounded-xl p-3.5 space-y-3">
+                        <div><label class="block text-[10px] text-zinc-400 mb-1">Marca já cadastrada</label><select id="existing-brand-for-model" class="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-zinc-200"><option value="">Selecione uma marca existente...</option></select></div>
+                        <div class="text-center text-[10px] text-zinc-500">OU cadastre uma nova marca antes de adicionar o modelo</div>
+                        <div class="flex flex-col sm:flex-row gap-2"><input id="new-brand-name" type="text" placeholder="Nome da nova marca (ex.: BYD)" class="flex-1 min-w-0 bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-zinc-200"><button type="button" onclick="addVehicleBrandOnly()" class="bg-dark border border-border hover:border-red-500 text-zinc-200 text-xs font-semibold px-4 py-2.5 rounded-xl">Cadastrar marca</button></div>
+                        <div class="flex flex-col sm:flex-row gap-2"><input id="new-model-name" type="text" placeholder="Nome do novo modelo (ex.: Dolphin Mini)" class="flex-1 min-w-0 bg-card border border-border rounded-xl px-3 py-2.5 text-xs text-zinc-200"><button type="button" onclick="addVehicleCatalogItem()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl">Cadastrar modelo</button></div>
+                        <p class="text-[10px] text-zinc-500">Selecione uma marca existente ou cadastre a nova marca primeiro. Depois, cadastre o modelo.</p>
                     </div>
 
                     <div>
@@ -461,18 +470,6 @@
                     </div>
                 </div>
 
-                <!-- Assinatura Digital (Nome Completo) -->
-                <div class="space-y-3 pt-4 border-t border-border bg-red-950/10 p-4 rounded-xl border border-red-900/30">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-signature text-red-500"></i>
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-white">Assinatura Digital (Nome Completo)</h4>
-                    </div>
-                    <p class="text-xs text-zinc-400">Para confirmar este diagnóstico, digite seu <strong class="text-zinc-200">Nome Completo (como assinatura)</strong>:</p>
-                    
-                    <div>
-                        <input type="text" id="diag-signature-name" required placeholder="Ex: Carlos Alberto da Silva" class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500">
-                    </div>
-                </div>
                 </div>
 
                 <!-- Checklist de Inspeção Externa -->
@@ -614,7 +611,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const APP_VERSION = '2026.10.08.3';
+        const APP_VERSION = '2026.10.22.1';
         const SUPABASE_URL = "https://eyricdzytukgqbighvky.supabase.co";
         const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PATJFNJp5oVWz10nSyEseg_fArltTfn";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -886,7 +883,7 @@
                 });
 
                 diagnostics = (diagResult.data || []).map(row => ({
-                    id: row.id, placa: row.placa, km: row.km, marca: row.marca, modelo: row.modelo, ano: row.ano || '',
+                    id: row.id, placa: row.placa, chassi: row.chassi || '', km: row.km, marca: row.marca, modelo: row.modelo, ano: row.ano || '',
                     pecas: row.pecas || [], codigos_falha: row.codigos_falha || [], checklist: row.checklist || {},
                     mecanico: row.mecanico, assinatura: row.assinatura, data: row.data, defeitos: row.defeitos || [],
                     observacoes: row.observacoes || '', anexos: attachmentMap[row.id] || [],
@@ -1159,8 +1156,7 @@
                                     <span>Mecânico: <strong class="text-zinc-300">${diag.mecanico}</strong></span>
                                 </div>
                                 <div class="text-xs text-zinc-400 flex items-center gap-1.5">
-                                    <i class="fa-solid fa-signature text-zinc-500"></i>
-                                    <span>Assinatura: <strong class="text-zinc-300">${diag.assinatura}</strong></span>
+
                                 </div>
                                 <div class="text-xs text-zinc-400 flex items-center gap-1.5">
                                     <i class="fa-regular fa-clock text-zinc-500"></i>
@@ -1235,24 +1231,22 @@
             return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
         }
 
+        const VEHICLE_BRAND_PLACEHOLDER = '__MARCA_SEM_MODELO__';
+
         function populateVehicleBrands(selectedBrand = '') {
             const select = document.getElementById('diag-marca');
             if (!select) return;
             const brands = [...new Set(vehicleCatalog.map(v => v.marca).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
-            select.innerHTML = '<option value="">Selecione a Marca...</option>' + brands.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
-            select.innerHTML += '<option value="Outra">Outra</option>';
-            if (selectedBrand) {
-                ensureBrandOption(selectedBrand);
-                select.value = selectedBrand;
-                onBrandChange();
-            }
+            select.innerHTML = '<option value="">Selecione a Marca...</option>' + brands.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('') + '<option value="Outra">Outra</option>';
+            const brandForModel = document.getElementById('existing-brand-for-model');
+            if (brandForModel) brandForModel.innerHTML = '<option value="">Selecione uma marca existente...</option>' + brands.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+            if (selectedBrand) { ensureBrandOption(selectedBrand); select.value = selectedBrand; onBrandChange(); }
         }
 
         function ensureBrandOption(brand) {
             const select = document.getElementById('diag-marca');
             if (!select || !brand) return;
-            const exists = [...select.options].some(o => o.value.toLowerCase() === brand.toLowerCase());
-            if (!exists) {
+            if (![...select.options].some(o => o.value.toLowerCase() === brand.toLowerCase())) {
                 const opt = document.createElement('option'); opt.value = brand; opt.textContent = brand;
                 select.insertBefore(opt, select.querySelector('option[value="Outra"]') || null);
             }
@@ -1263,39 +1257,72 @@
             const brand = document.getElementById('diag-marca').value;
             const modelSelect = document.getElementById('diag-modelo');
             if (!modelSelect) return;
-            const models = vehicleCatalog.filter(v => v.marca === brand).sort((a,b) => a.modelo.localeCompare(b.modelo, 'pt-BR'));
+            const models = vehicleCatalog.filter(v => v.marca === brand && v.modelo && v.modelo !== VEHICLE_BRAND_PLACEHOLDER).sort((a,b) => a.modelo.localeCompare(b.modelo, 'pt-BR'));
             modelSelect.innerHTML = brand ? '<option value="">Selecione o Modelo...</option>' : '<option value="">Selecione a marca primeiro...</option>';
             modelSelect.innerHTML += models.map(v => `<option value="${escapeHtml(v.modelo)}">${escapeHtml(v.modelo)}</option>`).join('');
             if (selectedModel) {
-                const exists = models.some(v => v.modelo.toLowerCase() === selectedModel.toLowerCase());
-                if (!exists) modelSelect.innerHTML += `<option value="${escapeHtml(selectedModel)}">${escapeHtml(selectedModel)} (cadastrado anteriormente)</option>`;
+                if (!models.some(v => v.modelo.toLowerCase() === selectedModel.toLowerCase())) modelSelect.innerHTML += `<option value="${escapeHtml(selectedModel)}">${escapeHtml(selectedModel)} (cadastrado anteriormente)</option>`;
                 modelSelect.value = selectedModel;
             }
         }
-
         function onModelChange() {}
 
         function openVehicleCatalogForm() {
             const box = document.getElementById('new-vehicle-form');
             box.classList.toggle('hidden');
-            if (!box.classList.contains('hidden')) document.getElementById('new-brand-name').focus();
+            if (!box.classList.contains('hidden')) {
+                const brands = [...new Set(vehicleCatalog.map(v => v.marca).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+                const select = document.getElementById('existing-brand-for-model');
+                select.innerHTML = '<option value="">Selecione uma marca existente...</option>' + brands.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+                select.value = document.getElementById('diag-marca').value || '';
+                document.getElementById('new-brand-name').focus();
+            }
+        }
+
+        async function addVehicleBrandOnly() {
+            if (!currentCompany) return;
+            const input = document.getElementById('new-brand-name');
+            const marca = input.value.trim();
+            if (!marca) { showToast('Informe o nome da nova marca.', 'error'); return; }
+            const existing = vehicleCatalog.find(v => v.marca.toLowerCase() === marca.toLowerCase());
+            if (existing) {
+                document.getElementById('existing-brand-for-model').value = existing.marca;
+                input.value = '';
+                showToast('Essa marca já existe. Ela foi selecionada para cadastrar o modelo.', 'info');
+                return;
+            }
+            const { data, error } = await supabaseClient.from('vehicle_catalog').insert({company_id: currentCompany.id, marca, modelo: VEHICLE_BRAND_PLACEHOLDER}).select('*').single();
+            if (error) { console.error(error); showToast('Não foi possível cadastrar a marca.', 'error'); return; }
+            vehicleCatalog.push(data);
+            populateVehicleBrands(marca);
+            document.getElementById('existing-brand-for-model').value = marca;
+            input.value = '';
+            showToast('Marca cadastrada. Agora informe o modelo.', 'success');
         }
 
         async function addVehicleCatalogItem() {
             if (!currentCompany) return;
-            const marca = document.getElementById('new-brand-name').value.trim();
+            const selectedBrand = document.getElementById('existing-brand-for-model').value.trim();
+            const newBrand = document.getElementById('new-brand-name').value.trim();
             const modelo = document.getElementById('new-model-name').value.trim();
-            if (!marca || !modelo) { showToast('Informe a marca e o modelo.', 'error'); return; }
-            const exists = vehicleCatalog.some(v => v.marca.toLowerCase() === marca.toLowerCase() && v.modelo.toLowerCase() === modelo.toLowerCase());
-            if (exists) { showToast('Essa marca e modelo já estão cadastrados.', 'info'); return; }
+            const marca = selectedBrand || newBrand;
+            if (!marca) { showToast('Selecione uma marca existente ou cadastre uma nova marca primeiro.', 'error'); return; }
+            if (!modelo) { showToast('Informe o nome do modelo.', 'error'); return; }
+            if (!vehicleCatalog.some(v => v.marca.toLowerCase() === marca.toLowerCase())) {
+                showToast('Cadastre a nova marca primeiro e depois adicione o modelo.', 'error'); return;
+            }
+            if (vehicleCatalog.some(v => v.marca.toLowerCase() === marca.toLowerCase() && v.modelo.toLowerCase() === modelo.toLowerCase())) {
+                showToast('Essa marca e modelo já estão cadastrados.', 'info'); return;
+            }
             const { data, error } = await supabaseClient.from('vehicle_catalog').insert({company_id: currentCompany.id, marca, modelo}).select('*').single();
-            if (error) { console.error(error); showToast('Não foi possível salvar o veículo.', 'error'); return; }
+            if (error) { console.error(error); showToast('Não foi possível salvar o modelo.', 'error'); return; }
             vehicleCatalog.push(data);
-            document.getElementById('new-brand-name').value = '';
             document.getElementById('new-model-name').value = '';
-            document.getElementById('new-vehicle-form').classList.add('hidden');
+            document.getElementById('new-brand-name').value = '';
+            document.getElementById('existing-brand-for-model').value = marca;
             populateVehicleBrands(marca); onBrandChange(modelo);
-            showToast('Marca e modelo cadastrados com sucesso!', 'success');
+            showToast('Modelo cadastrado com sucesso!', 'success');
+            saveDiagnosticDraft();
         }
 
         function selectedValues(name) { return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(x => x.value); }
@@ -1314,16 +1341,17 @@
             const renderItems = (catalog, query, selected, name, empty, limit=20) => {
                 const filtered = catalog.filter(x => filter(x, query));
                 const selectedItems = filtered.filter(x => selected.includes(x.name));
-                const shown = [...selectedItems, ...filtered.filter(x => !selected.includes(x.name))].slice(0, limit);
-                return (shown.length ? shown.map(x => label(x,name,selected)).join('') : `<span class="text-xs text-zinc-500">${empty}</span>`) + (filtered.length > limit ? `<span class="text-[10px] text-zinc-500 col-span-full">Exibindo os primeiros ${limit} de ${filtered.length} resultados. Digite mais caracteres para refinar a busca.</span>` : '');
+                const remainingSlots = Math.max(0, limit - selectedItems.length);
+                const shown = [...selectedItems, ...filtered.filter(x => !selected.includes(x.name)).slice(0, remainingSlots)];
+                return (shown.length ? shown.map(x => label(x,name,selected)).join('') : `<span class="text-xs text-zinc-500">${empty}</span>`) + (filtered.length > shown.length ? `<span class="text-[10px] text-zinc-500 col-span-full">Exibindo ${shown.length} de ${filtered.length} resultados. Digite mais caracteres para refinar a busca.</span>` : '');
             };
             defectContainer.innerHTML = renderItems(defectsCatalog, qDef, selectedDefects, 'predef_defect', 'Nenhum defeito encontrado.');
             partContainer.innerHTML = renderItems(partsCatalog, qPart, selectedParts, 'catalog_part', 'Nenhuma peça encontrada.');
             if (codeContainer) {
                 const filteredCodes = failureCodesCatalog.filter(x => !qCode || `${x.code}`.toLowerCase().includes(qCode));
                 const selectedVisible = filteredCodes.filter(x => selectedCodes.includes(x.code));
-                const shownCodes = [...selectedVisible, ...filteredCodes.filter(x => !selectedCodes.includes(x.code))].slice(0,20);
-                codeContainer.innerHTML = (shownCodes.length ? shownCodes.map(x => `<label class="flex items-center gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1.5 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="failure_code" value="${escapeHtml(x.code)}" ${selectedCodes.includes(x.code) ? 'checked' : ''} onchange="toggleFailureCodeSelection(this)" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span class="font-mono font-bold">${escapeHtml(x.code)}</span></label>`).join('') : '<span class="text-xs text-zinc-500">Nenhum código encontrado.</span>') + (filteredCodes.length > 20 ? `<span class="text-[10px] text-zinc-500 col-span-full">Exibindo os primeiros 20 de ${filteredCodes.length} códigos. Digite mais caracteres para refinar a busca.</span>` : '');
+                const shownCodes = [...selectedVisible, ...filteredCodes.filter(x => !selectedCodes.includes(x.code)).slice(0, Math.max(0, 20 - selectedVisible.length))];
+                codeContainer.innerHTML = (shownCodes.length ? shownCodes.map(x => `<label class="flex items-center gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1.5 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="failure_code" value="${escapeHtml(x.code)}" ${selectedCodes.includes(x.code) ? 'checked' : ''} onchange="toggleFailureCodeSelection(this)" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span class="font-mono font-bold">${escapeHtml(x.code)}</span></label>`).join('') : '<span class="text-xs text-zinc-500">Nenhum código encontrado.</span>') + (filteredCodes.length > shownCodes.length ? `<span class="text-[10px] text-zinc-500 col-span-full">Exibindo ${shownCodes.length} de ${filteredCodes.length} códigos. Digite mais caracteres para refinar a busca.</span>` : '');
             }
             updateSelectionCounts();
         }
@@ -1493,7 +1521,6 @@
             if (!get('diag-modelo')) missing.push('Modelo');
             if (!get('diag-mecanico-select')) missing.push('Mecânico responsável');
             if (selectedValues('predef_defect').length === 0 && selectedFailureCodes.length === 0) missing.push('ao menos 1 defeito encontrado ou código de falha do scanner');
-            if (!get('diag-signature-name')) missing.push('Nome completo para assinatura');
             return missing;
         }
 
@@ -1557,7 +1584,7 @@
             if (!currentCompany || document.getElementById('diagnostic-modal')?.classList.contains('hidden')) return;
             try {
                 const fields = {};
-                ['diag-id','diag-placa','diag-km','diag-marca','diag-modelo','diag-ano','diag-mecanico-select','diag-obs','diag-signature-name','checklist-observacoes'].forEach(id => {
+                ['diag-id','diag-placa','diag-chassi','diag-km','diag-marca','diag-modelo','diag-ano','diag-mecanico-select','diag-obs','checklist-observacoes'].forEach(id => {
                     const el = document.getElementById(id); if (el) fields[id] = el.value;
                 });
                 const draft = {savedAt: new Date().toISOString(), fields,
@@ -1659,12 +1686,12 @@
             document.getElementById('modal-title').textContent = `Editar Diagnóstico - ${diag.placa}`;
             document.getElementById('diag-id').value = diag.id;
             document.getElementById('diag-placa').value = diag.placa;
+            document.getElementById('diag-chassi').value = diag.chassi || '';
             document.getElementById('diag-km').value = diag.km;
             populateVehicleBrands(diag.marca || '');
             onBrandChange(diag.modelo || '');
             document.getElementById('diag-ano').value = diag.ano || '';
             document.getElementById('diag-obs').value = diag.observacoes || '';
-            document.getElementById('diag-signature-name').value = diag.assinatura || '';
 
             populateMechanicsSelect(diag.mecanico);
 
@@ -1744,14 +1771,9 @@
                 </div>
                 ` : ''}
 
-                <div class="border-t border-border pt-4 flex items-center justify-between">
-                    <div>
-                        <span class="text-[10px] uppercase font-semibold text-zinc-500 block">Assinatura Digital</span>
-                        <strong class="text-zinc-200 text-xs">${diag.assinatura}</strong>
-                    </div>
-                    <button onclick="downloadPDF('${diag.id}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5">
-                        <i class="fa-solid fa-file-pdf"></i> Baixar Laudo PDF
-                    </button>
+                <div class="border-t border-border pt-4 flex flex-wrap gap-2 justify-end">
+                    <button onclick="downloadPartsPDF('${diag.id}')" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"><i class="fa-solid fa-gears"></i> Baixar Relação de Peças PDF</button>
+                    <button onclick="downloadPDF('${diag.id}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"><i class="fa-solid fa-file-pdf"></i> Baixar Laudo PDF</button>
                 </div>
             `;
 
@@ -1942,13 +1964,14 @@
 
             const id = document.getElementById('diag-id').value;
             const placa = document.getElementById('diag-placa').value.toUpperCase();
+            const chassi = document.getElementById('diag-chassi').value.trim().toUpperCase();
             const km = document.getElementById('diag-km').value;
             const marca = document.getElementById('diag-marca').value;
             const modelo = document.getElementById('diag-modelo').value;
             const ano = document.getElementById('diag-ano').value.trim();
             const mecanico = document.getElementById('diag-mecanico-select').value;
             const obs = document.getElementById('diag-obs').value;
-            const assinatura = document.getElementById('diag-signature-name').value.trim();
+            const assinatura = '';
             const checklist = collectChecklist();
 
             try {
@@ -1959,7 +1982,6 @@
                 }
                 validateChecklist(checklist);
                 if (!mecanico) throw new Error('Selecione um mecânico responsável.');
-                if (!assinatura) throw new Error('Informe o nome completo para a assinatura digital.');
 
                 const selectedDefects = selectedValues('predef_defect');
                 const selectedParts = selectedValues('catalog_part');
@@ -1975,7 +1997,7 @@
                 const row = {
                     id: diagnosticId,
                     company_id: currentCompany.id,
-                    placa, km, marca, modelo, ano, mecanico, assinatura,
+                    placa, chassi: chassi || null, km, marca, modelo, ano, mecanico, assinatura,
                     pecas: selectedParts,
                     codigos_falha: selectedCodes,
                     checklist,
@@ -2048,7 +2070,7 @@
                 }
 
                 const localDiagnostic = {
-                    id: diagnosticId, placa, km, marca, modelo, ano, mecanico, assinatura,
+                    id: diagnosticId, placa, chassi: chassi || null, km, marca, modelo, ano, mecanico, assinatura,
                     pecas: selectedParts, codigos_falha: selectedCodes, checklist,
                     data: row.data, defeitos: selectedDefects, observacoes: obs,
                     anexos: finalAttachments, status: row.status,
@@ -2143,6 +2165,35 @@
             document.getElementById('attachments-modal').classList.add('hidden');
         }
 
+        // PDF separado com a relação de peças selecionadas no diagnóstico.
+        function downloadPartsPDF(id) {
+            const diag = diagnostics.find(d => d.id === id);
+            if (!diag) return;
+            const printArea = document.getElementById('print-area');
+            const esc = value => escapeHtml(value ?? '');
+            const pecas = Array.isArray(diag.pecas) ? diag.pecas : [];
+            printArea.innerHTML = `
+                <div style="font-family:Arial,sans-serif;color:#111;font-size:12px;">
+                    <div style="border-bottom:3px solid #ef4444;padding-bottom:10px;margin-bottom:16px;">
+                        <h1 style="margin:0;font-size:20px;font-weight:bold;">RELAÇÃO DE PEÇAS</h1>
+                        <p style="margin:4px 0 0;font-size:12px;color:#dc2626;font-weight:bold;">${esc(currentCompany?.name || 'OFICINA MECÂNICA')}</p>
+                        <p style="margin:2px 0 0;font-size:10px;color:#555;">CNPJ: ${esc(currentCompany?.cnpj || '')}</p>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;">
+                        <tr><td style="padding:7px;border:1px solid #ddd;"><strong>Placa:</strong> ${esc(diag.placa)}</td><td style="padding:7px;border:1px solid #ddd;"><strong>KM:</strong> ${esc(diag.km)} KM</td></tr>
+                        <tr><td colspan="2" style="padding:7px;border:1px solid #ddd;"><strong>Chassi:</strong> ${esc(diag.chassi || '—')}</td></tr>
+                        <tr><td style="padding:7px;border:1px solid #ddd;"><strong>Marca:</strong> ${esc(diag.marca)}</td><td style="padding:7px;border:1px solid #ddd;"><strong>Modelo:</strong> ${esc(diag.modelo)}</td></tr>
+                        <tr><td style="padding:7px;border:1px solid #ddd;"><strong>Ano:</strong> ${esc(diag.ano || '—')}</td><td style="padding:7px;border:1px solid #ddd;"><strong>Mecânico:</strong> ${esc(diag.mecanico)}</td></tr>
+                        <tr><td colspan="2" style="padding:7px;border:1px solid #ddd;"><strong>Data do diagnóstico:</strong> ${esc(diag.data || '—')}</td></tr>
+                    </table>
+                    <h2 style="font-size:14px;border-bottom:1px solid #ccc;padding-bottom:6px;margin:0 0 8px;">Peças selecionadas</h2>
+                    ${pecas.length ? `<ol style="padding-left:22px;line-height:1.7;">${pecas.map(p => `<li>${esc(p)}</li>`).join('')}</ol>` : '<p>Nenhuma peça foi selecionada neste diagnóstico.</p>'}
+                    <p style="margin-top:24px;border-top:1px solid #ddd;padding-top:8px;font-size:9px;color:#666;">Documento gerado pelo DiagnosticoCarbral.</p>
+                </div>`;
+            window.print();
+            showToast('Relação de peças preparada para impressão/PDF.', 'success');
+        }
+
         // PDF Export for Client Sharing
         function downloadPDF(id) {
             const diag = diagnostics.find(d => d.id === id);
@@ -2186,6 +2237,7 @@
                         </div>
                         <div style="text-align:right;white-space:nowrap;">
                             <span style="font-size:12px;font-weight:bold;background:#eee;padding:4px 8px;border-radius:4px;">PLACA: ${esc(diag.placa)}</span>
+                            <div style="font-size:10px;margin-top:5px;color:#555;"><strong>CHASSI:</strong> ${esc(diag.chassi || '—')}</div>
                         </div>
                     </div>
 
@@ -2193,7 +2245,7 @@
                         <table style="width:100%;border-collapse:collapse;font-size:10.5px;">
                             <tr><td style="padding:3px 0;"><strong>Marca / Modelo:</strong> ${esc(diag.marca)} ${esc(diag.modelo)}</td><td style="padding:3px 0;"><strong>Ano:</strong> ${esc(diag.ano || '—')}</td></tr>
                             <tr><td style="padding:3px 0;"><strong>Quilometragem:</strong> ${esc(diag.km)} KM</td><td style="padding:3px 0;"><strong>Mecânico:</strong> ${esc(diag.mecanico)}</td></tr>
-                            <tr><td style="padding:3px 0;"><strong>Data da Inspeção:</strong> ${esc(diag.data)}</td><td style="padding:3px 0;"><strong>Assinatura:</strong> ${esc(diag.assinatura)}</td></tr>
+                            <tr><td style="padding:3px 0;"><strong>Data da Inspeção:</strong> ${esc(diag.data)}</td><td style="padding:3px 0;"><strong>Status:</strong> ${esc(diag.status || "Concluído")}</td></tr>
                         </table>
                     </div>
 
@@ -2220,9 +2272,8 @@
 
                     ${diag.observacoes ? `<div class="avoid-break" style="margin-bottom:14px;"><h3 style="font-size:13px;border-bottom:1px solid #ccc;padding-bottom:5px;color:#333;margin:0 0 6px;">Observações Técnicas / Relato</h3><p style="font-size:11px;background:#fdfdfd;border:1px solid #eee;padding:8px;border-radius:5px;line-height:1.45;margin:0;">${esc(diag.observacoes)}</p></div>` : ''}
 
-                    <div class="avoid-break" style="margin-top:18px;border-top:1px solid #ccc;padding-top:12px;display:flex;justify-content:space-between;gap:20px;font-size:9px;color:#666;">
-                        <div><p style="margin:0 0 4px;">Documento gerado digitalmente pelo sistema <strong>DiagnosticoCarbral</strong>.</p><p style="margin:0;">Este relatório destina-se ao cliente para fins de orçamento e aprovação de reparos.</p></div>
-                        <div style="text-align:center;width:190px;min-width:190px;"><div style="border-bottom:1px solid #333;height:25px;margin-bottom:4px;"></div><span style="font-weight:bold;display:block;">${esc(diag.assinatura)}</span><span>Assinatura do Mecânico Responsável</span></div>
+                    <div class="avoid-break" style="margin-top:18px;border-top:1px solid #ccc;padding-top:12px;font-size:9px;color:#666;">
+                        <p style="margin:0 0 4px;">Documento gerado digitalmente pelo sistema <strong>DiagnosticoCarbral</strong>.</p><p style="margin:0;">Este relatório destina-se ao cliente para fins de orçamento e aprovação de reparos.</p>
                     </div>
                 </div>
             `;
