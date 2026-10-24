@@ -43,7 +43,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; overscroll-behavior-y: contain; }
+        #diagnostic-modal { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
+        #diagnostic-modal > div { max-height: calc(100dvh - 2rem); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
+        .catalog-list { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #09090b; }
         ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
@@ -237,6 +240,9 @@
                         <i class="fa-solid fa-users-gear"></i>
                         <span>Mecânicos da Oficina (<span id="mechanics-count">0</span>)</span>
                     </button>
+                    <button onclick="switchDashboardTab('analytics')" id="dash-tab-analytics" class="px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column"></i><span>Dashboard</span>
+                    </button>
                 </div>
 
                 <!-- Search Bar (Only active on Diagnostics tab) -->
@@ -255,6 +261,10 @@
                 
                 <!-- TAB 1: DIAGNOSTICS -->
                 <div id="view-diagnostics" class="space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3 bg-card border border-border rounded-xl p-3">
+                        <label class="flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" id="select-all-diagnostics" onchange="toggleSelectAllDiagnostics(this.checked)" class="rounded border-zinc-700 bg-dark text-red-600"> Selecionar todos</label>
+                        <div class="flex items-center gap-3"><span id="bulk-selected-count" class="text-xs text-zinc-500">0 selecionados</span><button type="button" onclick="bulkCancelDiagnostics()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-ban mr-1"></i>Cancelar selecionados</button></div>
+                    </div>
                     <div id="diagnostics-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         <!-- Populated by JS -->
                     </div>
@@ -311,6 +321,16 @@
                                 <!-- Populated dynamically -->
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: DASHBOARD ANALÍTICO -->
+                <div id="view-analytics" class="hidden space-y-5">
+                    <div class="bg-card border border-border rounded-2xl p-4 space-y-4">
+                        <div class="flex items-center justify-between flex-wrap gap-2"><h3 class="font-bold text-white"><i class="fa-solid fa-chart-column text-red-500 mr-2"></i>Diagnósticos por mecânico</h3><div class="flex flex-wrap gap-2"><button onclick="downloadMonthlyMechanicReport()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-csv mr-1"></i>Baixar relação mensal (CSV)</button><button onclick="downloadMonthlyMechanicPDF()" class="bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-pdf mr-1"></i>Baixar relação mensal (PDF)</button></div></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="block text-xs text-zinc-400 mb-1">Mês da emissão</label><input type="month" id="dashboard-month" onchange="renderAnalyticsDashboard()" class="w-full bg-dark border border-border rounded-xl px-3 py-2 text-sm text-zinc-200"></div><div><label class="block text-xs text-zinc-400 mb-1">Filtrar mecânicos (pode selecionar vários)</label><div id="dashboard-mechanic-filters" class="flex flex-wrap gap-2"></div></div></div>
+                        <div id="analytics-chart" class="space-y-3"></div>
+                        <p id="analytics-summary" class="text-xs text-zinc-400"></p>
                     </div>
                 </div>
 
@@ -425,7 +445,7 @@
                             <div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i><input id="defect-search" oninput="filterCatalogList('defect')" type="text" placeholder="Pesquisar defeito..." class="w-full bg-dark border border-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div>
                             <button type="button" onclick="addCatalogItem('defect')" class="bg-dark border border-border hover:border-red-500 text-zinc-300 hover:text-white px-3 rounded-xl" title="Cadastrar novo defeito"><i class="fa-solid fa-plus"></i></button>
                         </div>
-                        <div id="predef-list" class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
+                        <div id="predef-list" class="catalog-list bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
                     </div>
 
                     <div class="bg-card border border-border rounded-xl p-4 space-y-3">
@@ -444,7 +464,7 @@
                     <div class="bg-card border border-border rounded-xl p-4 space-y-3">
                         <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold uppercase tracking-wider text-red-500 flex items-center gap-2"><i class="fa-solid fa-gears"></i> 3. Peças a Serem Substituídas</h4><span id="part-selection-count" class="text-[10px] text-zinc-500">0 selecionadas</span></div>
                         <div class="flex gap-2"><div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i><input id="part-search" oninput="filterCatalogList('part')" type="text" placeholder="Pesquisar peça..." class="w-full bg-dark border border-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-red-500"></div><button type="button" onclick="addCatalogItem('part')" class="bg-dark border border-border hover:border-red-500 text-zinc-300 hover:text-white px-3 rounded-xl" title="Cadastrar nova peça"><i class="fa-solid fa-plus"></i></button></div>
-                        <div id="parts-list" class="bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
+                        <div id="parts-list" class="catalog-list bg-dark border border-border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto"></div>
                     </div>
 
                     <div><label class="block text-xs font-medium text-zinc-300 mb-1">Relato Adicional / Observações Manuais</label><textarea id="diag-obs" rows="3" placeholder="Descreva falhas específicas, barulhos relatados pelo cliente ou observações técnicas..." class="w-full bg-dark border border-border rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500"></textarea></div>
@@ -611,7 +631,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const APP_VERSION = '2026.10.22.1';
+        const APP_VERSION = '2026.10.24.1';
         const SUPABASE_URL = "https://eyricdzytukgqbighvky.supabase.co";
         const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PATJFNJp5oVWz10nSyEseg_fArltTfn";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -633,6 +653,10 @@
         let defectsCatalog = [];
         let failureCodesCatalog = [];
         let vehicleCatalog = [];
+        let selectedDefectSet = new Set();
+        let selectedPartSet = new Set();
+        let editingMechanicId = null;
+        let selectedDiagnosticIds = new Set();
 
         // Common pre-registered defects
         const COMMON_DEFECTS = [
@@ -980,58 +1004,101 @@
             showToast('Sessão encerrada com sucesso.', 'info');
         }
 
-        // Dashboard Tabs (Diagnostics vs Mechanics)
+        // Navegação entre Diagnósticos, Mecânicos e Dashboard analítico.
         function switchDashboardTab(tab) {
-            const diagTabBtn = document.getElementById('dash-tab-diag');
-            const mechTabBtn = document.getElementById('dash-tab-mech');
-            const diagView = document.getElementById('view-diagnostics');
-            const mechView = document.getElementById('view-mechanics');
-            const searchBar = document.getElementById('search-bar-wrapper');
-
-            if (tab === 'diagnostics') {
-                diagTabBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center gap-2';
-                mechTabBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2';
-                diagView.classList.remove('hidden');
-                mechView.classList.add('hidden');
-                searchBar.classList.remove('hidden');
-                renderDiagnosticsList();
-            } else {
-                mechTabBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center gap-2';
-                diagTabBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2';
-                mechView.classList.remove('hidden');
-                diagView.classList.add('hidden');
-                searchBar.classList.add('hidden');
-                renderMechanicsList();
-            }
-            document.getElementById('mechanics-count').textContent = mechanics.length;
+            const tabs = { diagnostics: 'dash-tab-diag', mechanics: 'dash-tab-mech', analytics: 'dash-tab-analytics' };
+            const views = { diagnostics: 'view-diagnostics', mechanics: 'view-mechanics', analytics: 'view-analytics' };
+            Object.entries(tabs).forEach(([key,id]) => {
+                const el=document.getElementById(id); if(!el) return;
+                el.className = key===tab ? 'px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center gap-2' : 'px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2';
+            });
+            Object.entries(views).forEach(([key,id]) => { const el=document.getElementById(id); if(el) el.classList.toggle('hidden',key!==tab); });
+            const searchBar=document.getElementById('search-bar-wrapper');
+            if(searchBar) searchBar.classList.toggle('hidden',tab!=='diagnostics');
+            if(tab==='diagnostics') renderDiagnosticsList();
+            if(tab==='mechanics') renderMechanicsList();
+            if(tab==='analytics') renderAnalyticsDashboard();
+            const count=document.getElementById('mechanics-count'); if(count) count.textContent=mechanics.length;
         }
 
-        // Mechanics Management
+        function diagnosticMonthKey(d){
+            const raw=String(d.data||''); const m=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            if(m)return `${m[3]}-${m[2]}`;
+            const date=new Date(d.created_at||d.data_atualizacao||'');return Number.isNaN(date.getTime())?'':`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+        }
+        function renderAnalyticsDashboard(){
+            const monthEl=document.getElementById('dashboard-month');if(!monthEl)return;
+            if(!monthEl.value){const now=new Date();monthEl.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;}
+            const filterBox=document.getElementById('dashboard-mechanic-filters');
+            const prior=[...document.querySelectorAll('.dashboard-mechanic-check:checked')].map(x=>x.value);
+            if(filterBox){filterBox.innerHTML=mechanics.map(m=>`<label class="flex items-center gap-1.5 text-xs bg-dark border border-border rounded-lg px-2 py-1.5"><input class="dashboard-mechanic-check rounded text-red-600" type="checkbox" value="${escapeHtml(m.name)}" ${prior.length===0||prior.includes(m.name)?'checked':''} onchange="renderAnalyticsChartOnly()">${escapeHtml(m.name)}</label>`).join('')||'<span class="text-xs text-zinc-500">Cadastre mecânicos para filtrar.</span>';}
+            renderAnalyticsChartOnly();
+        }
+        function renderAnalyticsChartOnly(){
+            const month=document.getElementById('dashboard-month')?.value||'';
+            const chosen=[...document.querySelectorAll('.dashboard-mechanic-check:checked')].map(x=>x.value);
+            const monthDiags=diagnostics.filter(d=>d.status!=='Cancelado'&&diagnosticMonthKey(d)===month&&(chosen.length===0||chosen.includes(d.mecanico)));
+            const names=chosen.length?chosen:mechanics.map(m=>m.name);
+            const counts=names.map(name=>({name,count:monthDiags.filter(d=>d.mecanico===name).length})).sort((a,b)=>b.count-a.count);
+            const max=Math.max(1,...counts.map(x=>x.count));
+            const chart=document.getElementById('analytics-chart');if(chart)chart.innerHTML=counts.length?counts.map(x=>`<div class="grid grid-cols-[minmax(90px,1fr)_3fr_32px] items-center gap-2"><span class="text-xs text-zinc-300 truncate">${escapeHtml(x.name)}</span><div class="h-5 bg-dark border border-border rounded-md overflow-hidden"><div class="h-full bg-red-600 rounded-md" style="width:${x.count/max*100}%"></div></div><strong class="text-xs text-white text-right">${x.count}</strong></div>`).join(''):'<p class="text-xs text-zinc-500">Nenhum mecânico encontrado.</p>';
+            const summary=document.getElementById('analytics-summary');if(summary)summary.textContent=`${monthDiags.length} diagnóstico(s) no mês ${month}, considerando ${chosen.length?chosen.length+' mecânico(s) selecionado(s)':'todos os mecânicos'}.`;
+        }
+        function downloadMonthlyMechanicReport(){
+            const month=document.getElementById('dashboard-month')?.value||'';
+            const chosen=[...document.querySelectorAll('.dashboard-mechanic-check:checked')].map(x=>x.value);
+            const rows=diagnostics.filter(d=>d.status!=='Cancelado'&&diagnosticMonthKey(d)===month&&(chosen.length===0||chosen.includes(d.mecanico)));
+            const csvCell=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+            const csv=[['Data','Placa','Marca','Modelo','Ano','Chassi','KM','Mecânico','Defeitos','Peças'].map(csvCell).join(';'),...rows.map(d=>[d.data,d.placa,d.marca,d.modelo,d.ano,d.chassi,d.km,d.mecanico,(d.defeitos||[]).join(', '),(d.pecas||[]).join(', ')].map(csvCell).join(';'))].join('\r\n');
+            const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`diagnosticos-${month||'mensal'}.csv`;a.click();URL.revokeObjectURL(url);
+        }
+
+        function downloadMonthlyMechanicPDF(){
+            const month=document.getElementById('dashboard-month')?.value||'';
+            const chosen=[...document.querySelectorAll('.dashboard-mechanic-check:checked')].map(x=>x.value);
+            const rows=diagnostics.filter(d=>d.status!=='Cancelado'&&diagnosticMonthKey(d)===month&&(chosen.length===0||chosen.includes(d.mecanico)));
+            const escPDF=value=>String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            const monthLabel=month?(()=>{const [y,m]=month.split('-');return `${m}/${y}`;})():'Todos os meses';
+            const mechanicsLabel=chosen.length?chosen.join(', '):'Todos os mecânicos';
+            const tableRows=rows.length?rows.map(d=>`<tr><td>${escPDF(d.data||'—')}</td><td>${escPDF(d.placa||'—')}</td><td>${escPDF([d.marca,d.modelo].filter(Boolean).join(' ')||'—')}</td><td>${escPDF(d.ano||'—')}</td><td>${escPDF(d.chassi||'—')}</td><td>${escPDF(d.km||'—')}</td><td>${escPDF(d.mecanico||'—')}</td><td>${escPDF((d.defeitos||[]).join(', ')||'—')}</td><td>${escPDF((d.pecas||[]).join(', ')||'—')}</td></tr>`).join(''):'<tr><td colspan="9" style="text-align:center;padding:18px">Nenhum diagnóstico encontrado para os filtros selecionados.</td></tr>';
+            const win=window.open('','_blank');
+            if(!win){showToast('Permita pop-ups no navegador para gerar o PDF.','error');return;}
+            win.document.open();
+            win.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório mensal de diagnósticos - ${escPDF(monthLabel)}</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#222;font-size:10px}h1{font-size:18px;margin:0 0 6px}p{margin:3px 0 12px;color:#444}.summary{margin:12px 0;font-size:11px}table{width:100%;border-collapse:collapse;table-layout:auto}th,td{border:1px solid #bbb;padding:5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#eee;font-size:9px}tr{break-inside:avoid}footer{margin-top:12px;font-size:9px;color:#666}@media screen{body{padding:18px}}</style></head><body><h1>DiagnósticoCarbral — Relação mensal de veículos</h1><p>Período: ${escPDF(monthLabel)} | Mecânicos: ${escPDF(mechanicsLabel)}</p><div class="summary"><strong>Total de diagnósticos:</strong> ${rows.length}</div><table><thead><tr><th>Data</th><th>Placa</th><th>Veículo</th><th>Ano</th><th>Chassi</th><th>KM</th><th>Mecânico</th><th>Defeitos</th><th>Peças</th></tr></thead><tbody>${tableRows}</tbody></table><footer>Relatório gerado pelo DiagnósticoCarbral em ${escPDF(new Date().toLocaleString('pt-BR'))}.</footer><script>window.onload=function(){setTimeout(function(){window.focus();window.print();},250)};<\/script></body></html>`);
+            win.document.close();
+        }
+
+        // Cadastro e edição de mecânicos
         async function saveMechanic(e) {
             e.preventDefault();
             if (!currentCompany) return;
-
-            const name = document.getElementById('mech-name').value.trim();
-            const specialty = document.getElementById('mech-specialty').value.trim() || 'Geral';
-
-            const newMech = {
-                id: 'mech-' + Date.now(),
-                company_id: currentCompany.id,
-                name,
-                specialty
-            };
-
-            const { error } = await supabaseClient.from('mechanics').insert(newMech);
-            if (error) {
-                console.error(error);
-                showToast('Não foi possível cadastrar o mecânico.', 'error');
-                return;
+            const name=document.getElementById('mech-name').value.trim();
+            const specialty=document.getElementById('mech-specialty').value.trim() || 'Geral';
+            if(!name){ showToast('Informe o nome do mecânico.','error'); return; }
+            if(editingMechanicId){
+                const {data,error}=await supabaseClient.from('mechanics').update({name,specialty}).eq('id',editingMechanicId).eq('company_id',currentCompany.id).select('*').single();
+                if(error){console.error(error);showToast('Não foi possível editar o mecânico.','error');return;}
+                const idx=mechanics.findIndex(m=>m.id===editingMechanicId); if(idx>=0) mechanics[idx]={id:data.id,name:data.name,specialty:data.specialty};
+                editingMechanicId=null;
+                const btn=document.querySelector('#mechanic-form button[type="submit"]'); if(btn) btn.innerHTML='<span>Salvar Mecânico</span><i class="fa-solid fa-check text-xs"></i>';
+                document.getElementById('mechanic-form').reset(); renderMechanicsList(); populateMechanicsSelect();
+                showToast('Mecânico atualizado com sucesso.','success'); return;
             }
+            const newMech={id:'mech-'+Date.now(),company_id:currentCompany.id,name,specialty};
+            const {error}=await supabaseClient.from('mechanics').insert(newMech);
+            if(error){console.error(error);showToast('Não foi possível cadastrar o mecânico.','error');return;}
+            mechanics.push({id:newMech.id,name,specialty});
+            document.getElementById('mechanic-form').reset(); renderMechanicsList(); populateMechanicsSelect();
+            showToast(`Mecânico ${name} cadastrado com sucesso!`,'success');
+        }
 
-            mechanics.push({ id: newMech.id, name, specialty });
-            document.getElementById('mechanic-form').reset();
-            renderMechanicsList();
-            showToast(`Mecânico ${name} cadastrado com sucesso!`, 'success');
+        function editMechanic(id){
+            const m=mechanics.find(x=>String(x.id)===String(id)); if(!m)return;
+            editingMechanicId=m.id;
+            document.getElementById('mech-name').value=m.name||'';
+            document.getElementById('mech-specialty').value=m.specialty||'';
+            const btn=document.querySelector('#mechanic-form button[type="submit"]'); if(btn) btn.innerHTML='<span>Salvar alterações</span><i class="fa-solid fa-check text-xs"></i>';
+            document.getElementById('mechanic-form').scrollIntoView({behavior:'smooth',block:'start'});
         }
 
         async function deleteMechanic(id) {
@@ -1064,13 +1131,13 @@
                                 <i class="fa-solid fa-user-gear"></i>
                             </div>
                             <div>
-                                <h4 class="text-xs font-bold text-white">${m.name}</h4>
-                                <span class="text-[10px] text-red-400 font-medium block">${m.specialty}</span>
+                                <h4 class="text-xs font-bold text-white">${escapeHtml(m.name)}</h4>
+                                <span class="text-[10px] text-red-400 font-medium block">${escapeHtml(m.specialty || '')}</span>
                             </div>
                         </div>
-                        <button onclick="deleteMechanic('${m.id}')" title="Excluir Mecânico" class="text-zinc-500 hover:text-red-400 p-2 rounded-xl bg-dark border border-border transition-colors">
+                        <div class="flex items-center gap-1"><button onclick="editMechanic('${m.id}')" title="Editar Mecânico" class="text-zinc-400 hover:text-amber-300 p-2 rounded-xl bg-dark border border-border transition-colors"><i class="fa-solid fa-pen text-xs"></i></button><button onclick="deleteMechanic('${m.id}')" title="Excluir Mecânico" class="text-zinc-500 hover:text-red-400 p-2 rounded-xl bg-dark border border-border transition-colors">
                             <i class="fa-solid fa-trash text-xs"></i>
-                        </button>
+                        </button></div>
                     </div>
                 `;
             });
@@ -1133,6 +1200,7 @@
 
                 container.innerHTML += `
                     <div class="bg-card border border-border hover:border-red-500/40 transition-all rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                        <label class="absolute top-3 right-3 z-10 flex items-center gap-1 text-[10px] text-zinc-400 bg-dark/90 rounded-lg px-2 py-1"><input type="checkbox" class="diagnostic-select rounded border-zinc-700 bg-dark text-red-600" value="${escapeHtml(String(diag.id))}" ${selectedDiagnosticIds.has(String(diag.id))?'checked':''} onchange="toggleDiagnosticSelection(this)"> Selecionar</label>
                         <div class="absolute top-0 left-0 bottom-0 w-1 ${diag.status === 'Cancelado' ? 'bg-zinc-600' : 'bg-red-600'} group-hover:bg-red-500 transition-colors"></div>
                         
                         <div>
@@ -1204,6 +1272,36 @@
                     </div>
                 `;
             });
+            updateBulkSelectionUI();
+        }
+
+        function toggleDiagnosticSelection(input){if(input.checked)selectedDiagnosticIds.add(String(input.value));else selectedDiagnosticIds.delete(String(input.value));updateBulkSelectionUI();}
+        function toggleSelectAllDiagnostics(checked){
+            diagnostics.filter(d=>d.status!=='Cancelado').forEach(d=>{if(checked)selectedDiagnosticIds.add(String(d.id));else selectedDiagnosticIds.delete(String(d.id));});
+            renderDiagnosticsList();
+        }
+        function updateBulkSelectionUI(){
+            const visible=[...document.querySelectorAll('.diagnostic-select')];
+            visible.forEach(el=>el.checked=selectedDiagnosticIds.has(String(el.value)));
+            const count=document.getElementById('bulk-selected-count');if(count)count.textContent=`${selectedDiagnosticIds.size} selecionado${selectedDiagnosticIds.size===1?'':'s'}`;
+            const all=document.getElementById('select-all-diagnostics');if(all)all.checked=visible.length>0&&visible.every(el=>el.checked);
+        }
+        async function bulkCancelDiagnostics(){
+            const ids=[...selectedDiagnosticIds].filter(id=>diagnostics.some(d=>String(d.id)===id&&d.status!=='Cancelado'));
+            if(!ids.length){showToast('Selecione pelo menos um diagnóstico.','info');return;}
+            if(!confirm(`Deseja cancelar e remover ${ids.length} diagnóstico(s) selecionado(s), incluindo anexos? Esta ação não pode ser desfeita.`))return;
+            let success=0,failed=0;
+            for(const id of ids){
+                const diag=diagnostics.find(d=>String(d.id)===id);if(!diag)continue;
+                try{
+                    const paths=(diag.anexos||[]).map(a=>a.storage_path).filter(Boolean);
+                    if(paths.length){const r=await supabaseClient.storage.from('diagnostic-attachments').remove(paths);if(r.error)throw r.error;}
+                    const ar=await supabaseClient.from('diagnostic_attachments').delete().eq('diagnostic_id',id).eq('company_id',currentCompany.id);if(ar.error)throw ar.error;
+                    const dr=await supabaseClient.from('diagnostics').delete().eq('id',id).eq('company_id',currentCompany.id);if(dr.error)throw dr.error;
+                    diagnostics=diagnostics.filter(d=>String(d.id)!==id);success++;
+                }catch(err){console.error('Falha ao cancelar',id,err);failed++;}
+            }
+            selectedDiagnosticIds.clear();renderDiagnosticsList();showToast(`${success} diagnóstico(s) removido(s).${failed?` ${failed} falharam; verifique o console.`:''}`,failed?'error':'success');
         }
 
         function filterDiagnostics() {
@@ -1300,6 +1398,12 @@
             showToast('Marca cadastrada. Agora informe o modelo.', 'success');
         }
 
+        function cancelVehicleCatalogForm(){
+            const box=document.getElementById('new-vehicle-form'); if(box) box.classList.add('hidden');
+            const brand=document.getElementById('new-brand-name'); const model=document.getElementById('new-model-name');
+            if(brand) brand.value=''; if(model) model.value='';
+        }
+
         async function addVehicleCatalogItem() {
             if (!currentCompany) return;
             const selectedBrand = document.getElementById('existing-brand-for-model').value.trim();
@@ -1325,57 +1429,55 @@
             saveDiagnosticDraft();
         }
 
-        function selectedValues(name) { return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(x => x.value); }
-
-        let selectedFailureCodes = [];
-        function renderCatalogLists(selectedDefects = selectedValues('predef_defect'), selectedParts = selectedValues('catalog_part'), selectedCodes = selectedFailureCodes) {
-            const defectContainer = document.getElementById('predef-list');
-            const partContainer = document.getElementById('parts-list');
-            const codeContainer = document.getElementById('failure-codes-list');
-            if (!defectContainer || !partContainer) return;
-            const qDef = (document.getElementById('defect-search')?.value || '').toLowerCase().trim();
-            const qPart = (document.getElementById('part-search')?.value || '').toLowerCase().trim();
-            const qCode = (document.getElementById('failure-code-search')?.value || '').toLowerCase().trim();
-            const filter = (item,q) => !q || `${item.name} ${item.category || ''}`.toLowerCase().includes(q);
-            const label = (item,name,selected) => `<label class="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="${name}" value="${escapeHtml(item.name)}" ${selected.includes(item.name) ? 'checked' : ''} onchange="updateSelectionCounts(); saveDiagnosticDraft()" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span><span>${escapeHtml(item.name)}</span>${item.category ? `<small class="block text-[9px] text-zinc-500">${escapeHtml(item.category)}</small>` : ''}</span></label>`;
-            const renderItems = (catalog, query, selected, name, empty, limit=20) => {
-                const filtered = catalog.filter(x => filter(x, query));
-                const selectedItems = filtered.filter(x => selected.includes(x.name));
-                const remainingSlots = Math.max(0, limit - selectedItems.length);
-                const shown = [...selectedItems, ...filtered.filter(x => !selected.includes(x.name)).slice(0, remainingSlots)];
-                return (shown.length ? shown.map(x => label(x,name,selected)).join('') : `<span class="text-xs text-zinc-500">${empty}</span>`) + (filtered.length > shown.length ? `<span class="text-[10px] text-zinc-500 col-span-full">Exibindo ${shown.length} de ${filtered.length} resultados. Digite mais caracteres para refinar a busca.</span>` : '');
+        function selectedValues(name) {
+            const set = name==='predef_defect' ? selectedDefectSet : (name==='catalog_part' ? selectedPartSet : null);
+            const visible=[...document.querySelectorAll(`input[name="${name}"]:checked`)].map(x=>x.value);
+            if(set){ visible.forEach(v=>set.add(v)); return [...set]; }
+            return visible;
+        }
+        function toggleCatalogSelection(input){
+            const set=input.name==='predef_defect'?selectedDefectSet:selectedPartSet;
+            if(input.checked)set.add(input.value);else set.delete(input.value);
+            updateSelectionCounts(); saveDiagnosticDraft();
+        }
+        function renderCatalogLists(selectedDefects = null, selectedParts = null, selectedCodes = selectedFailureCodes) {
+            if (selectedDefects !== null) selectedDefectSet = new Set(selectedDefects);
+            if (selectedParts !== null) selectedPartSet = new Set(selectedParts);
+            if (Array.isArray(selectedCodes)) selectedFailureCodes = [...selectedCodes];
+            const defectContainer=document.getElementById('predef-list'), partContainer=document.getElementById('parts-list'), codeContainer=document.getElementById('failure-codes-list');
+            if(!defectContainer||!partContainer)return;
+            const qDef=(document.getElementById('defect-search')?.value||'').toLowerCase().trim();
+            const qPart=(document.getElementById('part-search')?.value||'').toLowerCase().trim();
+            const qCode=(document.getElementById('failure-code-search')?.value||'').toLowerCase().trim();
+            const filter=(item,q)=>!q||`${item.name} ${item.category||''}`.toLowerCase().includes(q);
+            const label=(item,name,set)=>`<label class="flex items-start gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="${name}" value="${escapeHtml(item.name)}" ${set.has(item.name)?'checked':''} onchange="toggleCatalogSelection(this)" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span><span>${escapeHtml(item.name)}</span>${item.category?`<small class="block text-[9px] text-zinc-500">${escapeHtml(item.category)}</small>`:''}</span></label>`;
+            const renderItems=(catalog,query,set,name,empty,limit=20)=>{
+                const filtered=catalog.filter(x=>filter(x,query));
+                const selected=filtered.filter(x=>set.has(x.name));
+                const shown=[...selected,...filtered.filter(x=>!set.has(x.name)).slice(0,Math.max(0,limit-selected.length))];
+                return (shown.length?shown.map(x=>label(x,name,set)).join(''):`<span class="text-xs text-zinc-500">${empty}</span>`)+(filtered.length>shown.length?`<span class="text-[10px] text-zinc-500 col-span-full">Exibindo ${shown.length} de ${filtered.length}. Digite mais caracteres para refinar.</span>`:'');
             };
-            defectContainer.innerHTML = renderItems(defectsCatalog, qDef, selectedDefects, 'predef_defect', 'Nenhum defeito encontrado.');
-            partContainer.innerHTML = renderItems(partsCatalog, qPart, selectedParts, 'catalog_part', 'Nenhuma peça encontrada.');
-            if (codeContainer) {
-                const filteredCodes = failureCodesCatalog.filter(x => !qCode || `${x.code}`.toLowerCase().includes(qCode));
-                const selectedVisible = filteredCodes.filter(x => selectedCodes.includes(x.code));
-                const shownCodes = [...selectedVisible, ...filteredCodes.filter(x => !selectedCodes.includes(x.code)).slice(0, Math.max(0, 20 - selectedVisible.length))];
-                codeContainer.innerHTML = (shownCodes.length ? shownCodes.map(x => `<label class="flex items-center gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1.5 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="failure_code" value="${escapeHtml(x.code)}" ${selectedCodes.includes(x.code) ? 'checked' : ''} onchange="toggleFailureCodeSelection(this)" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span class="font-mono font-bold">${escapeHtml(x.code)}</span></label>`).join('') : '<span class="text-xs text-zinc-500">Nenhum código encontrado.</span>') + (filteredCodes.length > shownCodes.length ? `<span class="text-[10px] text-zinc-500 col-span-full">Exibindo ${shownCodes.length} de ${filteredCodes.length} códigos. Digite mais caracteres para refinar a busca.</span>` : '');
+            defectContainer.innerHTML=renderItems(defectsCatalog,qDef,selectedDefectSet,'predef_defect','Nenhum defeito encontrado.');
+            partContainer.innerHTML=renderItems(partsCatalog,qPart,selectedPartSet,'catalog_part','Nenhuma peça encontrada.');
+            if(codeContainer){
+                const filtered=failureCodesCatalog.filter(x=>!qCode||String(x.code).toLowerCase().includes(qCode));
+                const selected=filtered.filter(x=>selectedFailureCodes.includes(x.code));
+                const shown=[...selected,...filtered.filter(x=>!selectedFailureCodes.includes(x.code)).slice(0,Math.max(0,20-selected.length))];
+                codeContainer.innerHTML=(shown.length?shown.map(x=>`<label class="flex items-center gap-2.5 text-xs text-zinc-300 cursor-pointer hover:text-white p-1.5 rounded hover:bg-zinc-900 transition-colors"><input type="checkbox" name="failure_code" value="${escapeHtml(x.code)}" ${selectedFailureCodes.includes(x.code)?'checked':''} onchange="toggleFailureCodeSelection(this)" class="mt-0.5 rounded border-zinc-700 bg-zinc-950 text-red-600 focus:ring-red-500"><span class="font-mono font-bold">${escapeHtml(x.code)}</span></label>`).join(''):'<span class="text-xs text-zinc-500">Nenhum código encontrado.</span>')+(filtered.length>shown.length?`<span class="text-[10px] text-zinc-500 col-span-full">Exibindo ${shown.length} de ${filtered.length} códigos. Digite mais caracteres para refinar.</span>`:'');
             }
             updateSelectionCounts();
         }
-
-        function toggleFailureCodeSelection(input) {
-            if (input.checked) {
-                if (!selectedFailureCodes.includes(input.value)) selectedFailureCodes.push(input.value);
-            } else {
-                selectedFailureCodes = selectedFailureCodes.filter(code => code !== input.value);
-            }
-            updateSelectionCounts();
-            saveDiagnosticDraft();
+        function toggleFailureCodeSelection(input){
+            if(input.checked){if(!selectedFailureCodes.includes(input.value))selectedFailureCodes.push(input.value);}
+            else selectedFailureCodes=selectedFailureCodes.filter(code=>code!==input.value);
+            updateSelectionCounts();saveDiagnosticDraft();
         }
-
-        let catalogSearchTimer = null;
-        function filterCatalogList(type) {
-            clearTimeout(catalogSearchTimer);
-            catalogSearchTimer = setTimeout(() => renderCatalogLists(selectedValues('predef_defect'), selectedValues('catalog_part'), selectedFailureCodes), 100);
-        }
-
-        function updateSelectionCounts() {
-            const d = selectedValues('predef_defect').length, p = selectedValues('catalog_part').length, c = selectedFailureCodes.length;
-            const set = (id,text) => { const el=document.getElementById(id); if(el) el.textContent=text; };
-            set('defect-selection-count', `${d} selecionado${d===1?'':'s'}`); set('part-selection-count', `${p} selecionada${p===1?'':'s'}`); set('failure-code-selection-count', `${c} selecionado${c===1?'':'s'}`);
+        let catalogSearchTimer=null;
+        function filterCatalogList(type){clearTimeout(catalogSearchTimer);catalogSearchTimer=setTimeout(()=>renderCatalogLists(),100);}
+        function updateSelectionCounts(){
+            const d=selectedDefectSet.size,p=selectedPartSet.size,c=selectedFailureCodes.length;
+            const set=(id,text)=>{const el=document.getElementById(id);if(el)el.textContent=text;};
+            set('defect-selection-count',`${d} selecionado${d===1?'':'s'}`);set('part-selection-count',`${p} selecionada${p===1?'':'s'}`);set('failure-code-selection-count',`${c} selecionado${c===1?'':'s'}`);
         }
 
         async function addCatalogItem(type) {
@@ -1659,6 +1761,8 @@
             document.getElementById('diag-id').value = '';
             document.getElementById('diagnostic-form').reset();
             currentTempAttachments = [];
+            selectedDefectSet = new Set(); selectedPartSet = new Set();
+            const ds=document.getElementById('defect-search'); if(ds)ds.value=''; const ps=document.getElementById('part-search'); if(ps)ps.value='';
             populateMechanicsSelect();
             populateVehicleBrands();
             selectedFailureCodes = [];
