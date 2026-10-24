@@ -43,9 +43,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; overscroll-behavior-y: contain; }
-        #diagnostic-modal { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
-        #diagnostic-modal > div { max-height: calc(100dvh - 2rem); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
+        html { width: 100%; min-height: 100%; overflow-x: clip; }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; width: 100%; max-width: 100%; overflow-x: clip; overflow-y: auto; overscroll-behavior-y: auto; }
+        #app, #dashboard-view, main, #view-diagnostics, #view-mechanics, #view-analytics { min-width: 0; max-width: 100%; }
+        #diagnostic-modal { -webkit-overflow-scrolling: touch; overscroll-behavior: auto; touch-action: pan-y; }
+        #diagnostic-modal > div { height: 100%; min-height: 0; max-height: 100dvh; overflow: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: auto; touch-action: pan-y; }
+        #diagnostic-form { min-height: 0; overscroll-behavior-y: auto; touch-action: pan-y; }
+        #view-diagnostic-modal, #attachments-modal { -webkit-overflow-scrolling: touch; overscroll-behavior-y: auto; }
         .catalog-list { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #09090b; }
@@ -230,17 +234,17 @@
             </header>
 
             <!-- Navigation Tabs (Diagnósticos / Mecânicos) -->
-            <div class="bg-dark border-b border-border px-4 lg:px-8 py-3 flex items-center justify-between flex-wrap gap-4">
-                <div class="flex items-center gap-2 bg-card border border-border p-1 rounded-xl">
-                    <button onclick="switchDashboardTab('diagnostics')" id="dash-tab-diag" class="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex items-center gap-2">
+            <div class="bg-dark border-b border-border px-3 sm:px-4 lg:px-8 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 min-w-0">
+                <div class="grid grid-cols-3 gap-1 bg-card border border-border p-1 rounded-xl w-full xl:w-auto min-w-0">
+                    <button onclick="switchDashboardTab('diagnostics')" id="dash-tab-diag" class="min-w-0 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center">
                         <i class="fa-solid fa-clipboard-list"></i>
-                        <span>Diagnósticos (<span id="total-count">0</span>)</span>
+                        <span class="leading-tight">Diagnósticos <span>(<span id="total-count">0</span>)</span></span>
                     </button>
-                    <button onclick="switchDashboardTab('mechanics')" id="dash-tab-mech" class="px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2">
+                    <button onclick="switchDashboardTab('mechanics')" id="dash-tab-mech" class="min-w-0 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center">
                         <i class="fa-solid fa-users-gear"></i>
-                        <span>Mecânicos da Oficina (<span id="mechanics-count">0</span>)</span>
+                        <span class="leading-tight">Mecânicos <span>(<span id="mechanics-count">0</span>)</span></span>
                     </button>
-                    <button onclick="switchDashboardTab('analytics')" id="dash-tab-analytics" class="px-4 py-2 text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex items-center gap-2">
+                    <button onclick="switchDashboardTab('analytics')" id="dash-tab-analytics" class="min-w-0 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center">
                         <i class="fa-solid fa-chart-column"></i><span>Dashboard</span>
                     </button>
                 </div>
@@ -257,15 +261,22 @@
             </div>
 
             <!-- MAIN CONTENT AREA -->
-            <main class="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full">
+            <main class="flex-1 min-w-0 p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto w-full overflow-x-clip">
                 
                 <!-- TAB 1: DIAGNOSTICS -->
                 <div id="view-diagnostics" class="space-y-6">
                     <div class="flex flex-wrap items-center justify-between gap-3 bg-card border border-border rounded-xl p-3">
-                        <label class="flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" id="select-all-diagnostics" onchange="toggleSelectAllDiagnostics(this.checked)" class="rounded border-zinc-700 bg-dark text-red-600"> Selecionar todos</label>
-                        <div class="flex items-center gap-3"><span id="bulk-selected-count" class="text-xs text-zinc-500">0 selecionados</span><button type="button" onclick="bulkCancelDiagnostics()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-ban mr-1"></i>Cancelar selecionados</button></div>
+                        <div id="bulk-selection-controls" class="hidden flex-wrap items-center gap-3">
+                            <label class="flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" id="select-all-diagnostics" onchange="toggleSelectAllDiagnostics(this.checked)" class="rounded border-zinc-700 bg-dark text-red-600"> Selecionar todos</label>
+                            <span id="bulk-selected-count" class="text-xs text-zinc-500">0 selecionados</span>
+                        </div>
+                        <div class="flex items-center gap-2 ml-auto">
+                            <button type="button" id="bulk-mode-button" onclick="toggleBulkSelectionMode()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-ban mr-1"></i>Cancelar em massa</button>
+                            <button type="button" id="bulk-cancel-confirm-button" onclick="bulkCancelDiagnostics()" class="hidden bg-red-700 hover:bg-red-800 text-white text-xs font-semibold px-3 py-2 rounded-lg"><i class="fa-solid fa-check mr-1"></i>Cancelar selecionados</button>
+                            <button type="button" id="bulk-selection-exit-button" onclick="exitBulkSelectionMode()" class="hidden bg-dark hover:bg-zinc-800 border border-border text-zinc-300 text-xs font-semibold px-3 py-2 rounded-lg">Fechar seleção</button>
+                        </div>
                     </div>
-                    <div id="diagnostics-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div id="diagnostics-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 min-w-0">
                         <!-- Populated by JS -->
                     </div>
 
@@ -657,6 +668,7 @@
         let selectedPartSet = new Set();
         let editingMechanicId = null;
         let selectedDiagnosticIds = new Set();
+        let bulkSelectionMode = false;
 
         // Common pre-registered defects
         const COMMON_DEFECTS = [
@@ -871,40 +883,29 @@
         async function loadCompanyData(companyId) {
             if (!currentCompany) return;
 
+            // Dados principais são carregados separadamente dos catálogos.
+            // Uma falha em catálogo não pode apagar da tela os registros já buscados.
             try {
-                // Carrega os dados principais em paralelo para reduzir o tempo de entrada no sistema.
-                const [diagResult, mechResult, partResult, defectResult, failureResult, vehicleResult, attachmentResult] = await Promise.all([
+                const [diagResult, mechResult, attachmentResult] = await Promise.all([
                     supabaseClient.from('diagnostics').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
                     supabaseClient.from('mechanics').select('*').eq('company_id', companyId).order('created_at', { ascending: true }),
-                    supabaseClient.from('parts_catalog').select('*').order('name', { ascending: true }),
-                    supabaseClient.from('defects_catalog').select('*').order('name', { ascending: true }),
-                    supabaseClient.from('failure_codes_catalog').select('*').order('code', { ascending: true }),
-                    supabaseClient.from('vehicle_catalog').select('*').order('marca', { ascending: true }).order('modelo', { ascending: true }),
                     supabaseClient.from('diagnostic_attachments').select('*').eq('company_id', companyId).order('created_at', { ascending: true })
                 ]);
 
                 if (diagResult.error) throw diagResult.error;
                 if (mechResult.error) throw mechResult.error;
-                if (partResult.error) throw partResult.error;
-                if (defectResult.error) throw defectResult.error;
-                if (failureResult.error) throw failureResult.error;
-                if (vehicleResult.error) throw vehicleResult.error;
-                if (attachmentResult.error) throw attachmentResult.error;
-
-                partsCatalog = partResult.data || [];
-                defectsCatalog = defectResult.data || [];
-                failureCodesCatalog = failureResult.data || [];
-                vehicleCatalog = vehicleResult.data || [];
-                populateVehicleBrands();
-                renderCatalogLists();
 
                 const attachmentMap = {};
-                (attachmentResult.data || []).forEach(att => {
-                    if (!attachmentMap[att.diagnostic_id]) attachmentMap[att.diagnostic_id] = [];
-                    attachmentMap[att.diagnostic_id].push({
-                        id: att.id, name: att.name, type: att.type, size: att.size, storage_path: att.storage_path
+                if (!attachmentResult.error) {
+                    (attachmentResult.data || []).forEach(att => {
+                        if (!attachmentMap[att.diagnostic_id]) attachmentMap[att.diagnostic_id] = [];
+                        attachmentMap[att.diagnostic_id].push({
+                            id: att.id, name: att.name, type: att.type, size: att.size, storage_path: att.storage_path
+                        });
                     });
-                });
+                } else {
+                    console.warn('Não foi possível carregar os anexos; os diagnósticos serão exibidos sem os anexos nesta sessão:', attachmentResult.error);
+                }
 
                 diagnostics = (diagResult.data || []).map(row => ({
                     id: row.id, placa: row.placa, chassi: row.chassi || '', km: row.km, marca: row.marca, modelo: row.modelo, ano: row.ano || '',
@@ -918,10 +919,32 @@
                     id: row.id, name: row.name, specialty: row.specialty
                 }));
             } catch (error) {
-                console.error('Erro ao carregar dados:', error);
-                diagnostics = [];
-                mechanics = [];
-                showToast('Não foi possível carregar os dados da oficina.', 'error');
+                console.error('Erro ao carregar mecânicos e diagnósticos:', error);
+                // Não substituir arrays por [] em caso de erro: isso escondia os dados na interface.
+                showToast('Não foi possível carregar mecânicos e diagnósticos. Os dados do banco não foram alterados; verifique a conexão e tente novamente.', 'error');
+                return;
+            }
+
+            // Catálogos auxiliares: falhas aqui não devem limpar mecânicos ou diagnósticos.
+            try {
+                const [partResult, defectResult, failureResult, vehicleResult] = await Promise.all([
+                    supabaseClient.from('parts_catalog').select('*').order('name', { ascending: true }),
+                    supabaseClient.from('defects_catalog').select('*').order('name', { ascending: true }),
+                    supabaseClient.from('failure_codes_catalog').select('*').order('code', { ascending: true }),
+                    supabaseClient.from('vehicle_catalog').select('*').order('marca', { ascending: true }).order('modelo', { ascending: true })
+                ]);
+                if (partResult.error) console.warn('Falha ao carregar catálogo de peças:', partResult.error);
+                else partsCatalog = partResult.data || [];
+                if (defectResult.error) console.warn('Falha ao carregar catálogo de defeitos:', defectResult.error);
+                else defectsCatalog = defectResult.data || [];
+                if (failureResult.error) console.warn('Falha ao carregar catálogo de códigos:', failureResult.error);
+                else failureCodesCatalog = failureResult.data || [];
+                if (vehicleResult.error) console.warn('Falha ao carregar catálogo de veículos:', vehicleResult.error);
+                else vehicleCatalog = vehicleResult.data || [];
+                populateVehicleBrands();
+                renderCatalogLists();
+            } catch (catalogError) {
+                console.warn('Erro ao carregar catálogos auxiliares; mecânicos e diagnósticos foram preservados:', catalogError);
             }
         }
 
@@ -1200,7 +1223,7 @@
 
                 container.innerHTML += `
                     <div class="bg-card border border-border hover:border-red-500/40 transition-all rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                        <label class="absolute top-3 right-3 z-10 flex items-center gap-1 text-[10px] text-zinc-400 bg-dark/90 rounded-lg px-2 py-1"><input type="checkbox" class="diagnostic-select rounded border-zinc-700 bg-dark text-red-600" value="${escapeHtml(String(diag.id))}" ${selectedDiagnosticIds.has(String(diag.id))?'checked':''} onchange="toggleDiagnosticSelection(this)"> Selecionar</label>
+                        ${bulkSelectionMode && diag.status !== 'Cancelado' ? `<label class="absolute top-3 right-3 z-10 flex items-center gap-1 text-[10px] text-zinc-400 bg-dark/90 rounded-lg px-2 py-1"><input type="checkbox" class="diagnostic-select rounded border-zinc-700 bg-dark text-red-600" value="${escapeHtml(String(diag.id))}" ${selectedDiagnosticIds.has(String(diag.id))?'checked':''} onchange="toggleDiagnosticSelection(this)"> Selecionar</label>` : ''}
                         <div class="absolute top-0 left-0 bottom-0 w-1 ${diag.status === 'Cancelado' ? 'bg-zinc-600' : 'bg-red-600'} group-hover:bg-red-500 transition-colors"></div>
                         
                         <div>
@@ -1275,6 +1298,28 @@
             updateBulkSelectionUI();
         }
 
+        function toggleBulkSelectionMode(){
+            if(bulkSelectionMode){
+                // Já está no modo de seleção; mantém a seleção aberta para evitar cancelamento acidental.
+                return;
+            }
+            bulkSelectionMode=true;
+            const controls=document.getElementById('bulk-selection-controls');if(controls)controls.classList.remove('hidden');
+            const confirmButton=document.getElementById('bulk-cancel-confirm-button');if(confirmButton)confirmButton.classList.remove('hidden');
+            const exitButton=document.getElementById('bulk-selection-exit-button');if(exitButton)exitButton.classList.remove('hidden');
+            const modeButton=document.getElementById('bulk-mode-button');if(modeButton)modeButton.classList.add('hidden');
+            renderDiagnosticsList();
+            updateBulkSelectionUI();
+        }
+        function exitBulkSelectionMode(){
+            bulkSelectionMode=false;
+            selectedDiagnosticIds.clear();
+            const controls=document.getElementById('bulk-selection-controls');if(controls)controls.classList.add('hidden');
+            const confirmButton=document.getElementById('bulk-cancel-confirm-button');if(confirmButton)confirmButton.classList.add('hidden');
+            const exitButton=document.getElementById('bulk-selection-exit-button');if(exitButton)exitButton.classList.add('hidden');
+            const modeButton=document.getElementById('bulk-mode-button');if(modeButton)modeButton.classList.remove('hidden');
+            renderDiagnosticsList();
+        }
         function toggleDiagnosticSelection(input){if(input.checked)selectedDiagnosticIds.add(String(input.value));else selectedDiagnosticIds.delete(String(input.value));updateBulkSelectionUI();}
         function toggleSelectAllDiagnostics(checked){
             diagnostics.filter(d=>d.status!=='Cancelado').forEach(d=>{if(checked)selectedDiagnosticIds.add(String(d.id));else selectedDiagnosticIds.delete(String(d.id));});
@@ -1301,7 +1346,7 @@
                     diagnostics=diagnostics.filter(d=>String(d.id)!==id);success++;
                 }catch(err){console.error('Falha ao cancelar',id,err);failed++;}
             }
-            selectedDiagnosticIds.clear();renderDiagnosticsList();showToast(`${success} diagnóstico(s) removido(s).${failed?` ${failed} falharam; verifique o console.`:''}`,failed?'error':'success');
+            selectedDiagnosticIds.clear();if(success>0 && failed===0){exitBulkSelectionMode();}else{renderDiagnosticsList();}showToast(`${success} diagnóstico(s) removido(s).${failed?` ${failed} falharam; verifique o console.`:''}`,failed?'error':'success');
         }
 
         function filterDiagnostics() {
