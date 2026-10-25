@@ -43,9 +43,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html { width: 100%; min-height: 100%; overflow-x: clip; }
-        body { font-family: 'Inter', sans-serif; min-height: 100vh; width: 100%; max-width: 100%; overflow-x: clip; overflow-y: auto; overscroll-behavior-y: auto; }
+        html { width: 100%; min-height: 100%; overflow-x: clip; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; width: 100%; max-width: 100%; overflow-x: clip; overflow-y: auto; overscroll-behavior-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
         #app, #dashboard-view, main, #view-diagnostics, #view-mechanics, #view-analytics { min-width: 0; max-width: 100%; }
+        #dashboard-view { min-height: 0; }
+        #dashboard-view > main { overflow-x: clip; overflow-y: auto; min-height: 0; touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior-y: auto; }
+        #view-diagnostics, #view-mechanics, #view-analytics { overflow: visible; touch-action: pan-y; }
+        input, select, textarea, button, label { touch-action: manipulation; }
         #diagnostic-modal { -webkit-overflow-scrolling: touch; overscroll-behavior: auto; touch-action: pan-y; }
         #diagnostic-modal > div { height: 100%; min-height: 0; max-height: 100dvh; overflow: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: auto; touch-action: pan-y; }
         #diagnostic-form { min-height: 0; overscroll-behavior-y: auto; touch-action: pan-y; }
@@ -238,11 +242,11 @@
                 <div class="grid grid-cols-3 gap-1 bg-card border border-border p-1 rounded-xl w-full xl:w-auto min-w-0">
                     <button onclick="switchDashboardTab('diagnostics')" id="dash-tab-diag" class="min-w-0 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-semibold rounded-lg bg-red-600 text-white transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center">
                         <i class="fa-solid fa-clipboard-list"></i>
-                        <span class="leading-tight">Diagnósticos <span>(<span id="total-count">0</span>)</span></span>
+                        <span class="leading-tight">Diagnósticos</span><span id="total-count" class="hidden" aria-hidden="true">0</span>
                     </button>
                     <button onclick="switchDashboardTab('mechanics')" id="dash-tab-mech" class="min-w-0 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center">
                         <i class="fa-solid fa-users-gear"></i>
-                        <span class="leading-tight">Mecânicos <span>(<span id="mechanics-count">0</span>)</span></span>
+                        <span class="leading-tight">Mecânicos</span><span id="mechanics-count" class="hidden" aria-hidden="true">0</span>
                     </button>
                     <button onclick="switchDashboardTab('analytics')" id="dash-tab-analytics" class="min-w-0 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-semibold rounded-lg text-zinc-400 hover:text-white transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center">
                         <i class="fa-solid fa-chart-column"></i><span>Dashboard</span>
@@ -1222,8 +1226,9 @@
                 }
 
                 container.innerHTML += `
+                    <div class="min-w-0 flex flex-col gap-2">
+                        ${bulkSelectionMode && diag.status !== 'Cancelado' ? `<label class="w-fit max-w-full inline-flex items-center gap-2 self-start text-xs font-semibold text-zinc-200 bg-zinc-900 border border-zinc-700 hover:border-red-500/60 rounded-xl px-3 py-2 shadow-sm cursor-pointer select-none"><input type="checkbox" class="diagnostic-select h-4 w-4 rounded border-zinc-700 bg-dark text-red-600 focus:ring-red-500" value="${escapeHtml(String(diag.id))}" ${selectedDiagnosticIds.has(String(diag.id))?'checked':''} onchange="toggleDiagnosticSelection(this)"> Selecionar diagnóstico</label>` : ''}
                     <div class="bg-card border border-border hover:border-red-500/40 transition-all rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                        ${bulkSelectionMode && diag.status !== 'Cancelado' ? `<label class="absolute top-3 right-3 z-10 flex items-center gap-1 text-[10px] text-zinc-400 bg-dark/90 rounded-lg px-2 py-1"><input type="checkbox" class="diagnostic-select rounded border-zinc-700 bg-dark text-red-600" value="${escapeHtml(String(diag.id))}" ${selectedDiagnosticIds.has(String(diag.id))?'checked':''} onchange="toggleDiagnosticSelection(this)"> Selecionar</label>` : ''}
                         <div class="absolute top-0 left-0 bottom-0 w-1 ${diag.status === 'Cancelado' ? 'bg-zinc-600' : 'bg-red-600'} group-hover:bg-red-500 transition-colors"></div>
                         
                         <div>
@@ -1292,6 +1297,7 @@
                                 <span class="text-[11px]">Cancelar</span>
                             </button>
                         </div>
+                    </div>
                     </div>
                 `;
             });
