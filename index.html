@@ -43,8 +43,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html { width: 100%; min-height: 100%; overflow-x: clip; overscroll-behavior-y: contain; }
-        body { font-family: 'Inter', sans-serif; min-height: 100vh; min-height: 100dvh; width: 100%; max-width: 100%; overflow-x: clip; overflow-y: auto; overscroll-behavior-y: contain; }
+        html { width: 100%; min-height: 100%; overflow-x: clip; }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; width: 100%; max-width: 100%; overflow-x: clip; overflow-y: auto; overscroll-behavior-y: auto; }
         #app, #dashboard-view, main, #view-diagnostics, #view-mechanics, #view-analytics { min-width: 0; max-width: 100%; }
         #diagnostic-modal { -webkit-overflow-scrolling: touch; overscroll-behavior: auto; touch-action: pan-y; }
         #diagnostic-modal > div { height: 100%; min-height: 0; max-height: 100dvh; overflow: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: auto; touch-action: pan-y; }
@@ -351,7 +351,7 @@
     </div>
 
     <!-- Modal: Criar/Editar Diagnóstico -->
-    <div id="diagnostic-modal" class="fixed inset-0 z-50 bg-black/90 hidden flex items-stretch justify-center overflow-hidden">
+    <div id="diagnostic-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm hidden flex items-stretch justify-center overflow-hidden">
         <div class="bg-card border-0 sm:border sm:border-border w-full max-w-none h-full rounded-none sm:rounded-none shadow-2xl overflow-hidden flex flex-col">
             <div class="bg-dark px-4 sm:px-6 py-3 border-b border-border flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-2.5">
@@ -582,7 +582,7 @@
     </div>
 
     <!-- Modal: Visualizar Detalhes do Diagnóstico -->
-    <div id="view-diagnostic-modal" class="fixed inset-0 z-50 bg-black/80 hidden flex items-center justify-center p-4 overflow-y-auto">
+    <div id="view-diagnostic-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-8">
             <div class="bg-dark px-6 py-4 border-b border-border flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
@@ -607,7 +607,7 @@
     </div>
 
     <!-- Modal: Anexos -->
-    <div id="attachments-modal" class="fixed inset-0 z-50 bg-black/80 hidden flex items-center justify-center p-4 overflow-y-auto">
+    <div id="attachments-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8">
             <div class="bg-dark px-6 py-4 border-b border-border flex items-center justify-between">
                 <h3 class="font-bold text-white text-sm flex items-center gap-2">
@@ -1789,10 +1789,10 @@
         }
 
         function installPullToRefreshGuard() {
-            // Bloqueio do "puxar para atualizar" feito apenas via CSS (sem listener de touchmove),
-            // para não prejudicar a fluidez da rolagem.
-            document.documentElement.style.overscrollBehaviorY = 'contain';
-            document.body.style.overscrollBehaviorY = 'contain';
+            // Bloqueia o overscroll/pull-to-refresh via CSS, sem interceptar touchmove.
+            // Um listener global não passivo prejudica a rolagem e bloqueia gestos em modais.
+            document.documentElement.style.overscrollBehaviorY = 'none';
+            document.body.style.overscrollBehaviorY = 'none';
         }
 
         // New / Edit Modal Actions
