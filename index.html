@@ -127,6 +127,48 @@
         .dashboard-radio:checked + .dashboard-option.yes { background: #dc2626; color: #ffffff; border-color: #f87171; font-weight: 800; }
         .dashboard-radio:checked + .dashboard-option.no { background: #059669; color: #ffffff; border-color: #34d399; font-weight: 800; }
         .dashboard-item-label { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
+
+        /* Correção definitiva da rolagem das páginas principais: deixar a página crescer
+           e usar a rolagem nativa do documento, sem um segundo scroll interno no main. */
+        html, body {
+            height: auto !important;
+            min-height: 100% !important;
+            overflow-x: clip !important;
+            overflow-y: auto !important;
+            touch-action: pan-y !important;
+            -webkit-overflow-scrolling: touch;
+        }
+        body { min-height: 100vh !important; }
+        #app {
+            min-height: 100vh !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+        #dashboard-view {
+            min-height: 100vh !important;
+            height: auto !important;
+            flex: 1 0 auto !important;
+            overflow: visible !important;
+        }
+        #dashboard-view > main {
+            flex: 0 0 auto !important;
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow-x: clip !important;
+            overflow-y: visible !important;
+            touch-action: pan-y !important;
+            -webkit-overflow-scrolling: auto !important;
+        }
+        #view-diagnostics, #view-mechanics, #view-analytics {
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            touch-action: pan-y !important;
+        }
+        /* O modal de diagnóstico mantém sua própria rolagem interna. */
+        #diagnostic-modal > div { min-height: 0; }
     </style>
 </head>
 <body class="bg-darker text-zinc-100 min-h-screen flex flex-col selection:bg-red-600 selection:text-white">
