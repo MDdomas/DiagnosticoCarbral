@@ -749,6 +749,34 @@
         </div>
     </div>
 
+    <!-- Modal: selecionar peças que serão solicitadas ao fornecedor -->
+    <div id="parts-report-selection-modal" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl my-8 flex flex-col max-h-[90vh]">
+            <div class="bg-dark px-5 py-4 border-b border-border flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="font-bold text-white text-base">Selecionar peças para o relatório</h3>
+                    <p class="text-xs text-zinc-400 mt-1">Marque somente as peças que precisam ser solicitadas ao fornecedor.</p>
+                </div>
+                <button type="button" onclick="closePartsReportSelection()" class="text-zinc-400 hover:text-white p-2" aria-label="Fechar"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-5 overflow-y-auto min-h-0" style="-webkit-overflow-scrolling:touch;">
+                <div class="flex items-center justify-between gap-3 bg-dark border border-border rounded-xl p-3 mb-3">
+                    <label class="flex items-center gap-2 text-sm font-semibold text-white cursor-pointer">
+                        <input id="parts-report-select-all" type="checkbox" class="w-4 h-4 accent-red-600" onchange="toggleAllPartsForReport(this.checked)">
+                        Selecionar todas
+                    </label>
+                    <span id="parts-report-selected-count" class="text-xs text-zinc-400">0 selecionadas</span>
+                </div>
+                <div id="parts-report-options" class="space-y-2"></div>
+                <p id="parts-report-empty" class="hidden text-sm text-zinc-400 text-center py-5">Este diagnóstico não possui peças cadastradas.</p>
+            </div>
+            <div class="bg-dark px-5 py-4 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
+                <button type="button" onclick="closePartsReportSelection()" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold">Voltar</button>
+                <button type="button" onclick="generateSelectedPartsPDF()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-xs font-semibold"><i class="fa-solid fa-file-pdf mr-1"></i> Gerar PDF das peças selecionadas</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Custom Notification Toast -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -777,6 +805,7 @@
         let mechanics = [];
         let currentTempAttachments = [];
         let savingDiagnostic = false;
+        let currentPartsReportDiagnosticId = null;
         let partsCatalog = [];
         let defectsCatalog = [];
         let failureCodesCatalog = [];
@@ -2059,7 +2088,7 @@
                 ` : ''}
 
                 <div class="border-t border-border pt-4 flex flex-wrap gap-2 justify-end">
-                    <button onclick="downloadPartsPDF('${diag.id}')" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"><i class="fa-solid fa-gears"></i> Baixar Relação de Peças PDF</button>
+                    <button onclick="openPartsReportSelection('${diag.id}')" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"><i class="fa-solid fa-gears"></i> Baixar Relação de Peças PDF</button>
                     <button onclick="downloadPDF('${diag.id}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"><i class="fa-solid fa-file-pdf"></i> Baixar Laudo PDF</button>
                 </div>
             `;
@@ -2452,13 +2481,76 @@
             document.getElementById('attachments-modal').classList.add('hidden');
         }
 
-        // PDF separado com a relação de peças selecionadas no diagnóstico.
-        function downloadPartsPDF(id) {
+        // Seleção prévia das peças que serão incluídas na relação para o fornecedor.
+        function openPartsReportSelection(id) {
+            const diag = diagnostics.find(d => d.id === id);
+            if (!diag) return;
+            currentPartsReportDiagnosticId = id;
+            const parts = Array.isArray(diag.pecas) ? diag.pecas : [];
+            const container = document.getElementById('parts-report-options');
+            const empty = document.getElementById('parts-report-empty');
+            container.innerHTML = parts.map((part, index) => `
+                <label class="flex items-start gap-3 p-3 rounded-xl border border-border bg-dark hover:border-red-500/50 cursor-pointer transition-colors">
+                    <input type="checkbox" class="parts-report-option mt-0.5 w-4 h-4 accent-red-600 shrink-0" value="${escapeHtml(String(index))}" checked onchange="updatePartsReportSelectionCount()">
+                    <span class="text-sm text-zinc-200 leading-5">${escapeHtml(part)}</span>
+                </label>
+            `).join('');
+            empty.classList.toggle('hidden', parts.length > 0);
+            document.getElementById('parts-report-select-all').checked = parts.length > 0;
+            document.getElementById('parts-report-select-all').indeterminate = false;
+            updatePartsReportSelectionCount();
+            const modal = document.getElementById('parts-report-selection-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closePartsReportSelection() {
+            const modal = document.getElementById('parts-report-selection-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            currentPartsReportDiagnosticId = null;
+        }
+
+        function toggleAllPartsForReport(checked) {
+            document.querySelectorAll('.parts-report-option').forEach(cb => { cb.checked = checked; });
+            updatePartsReportSelectionCount();
+        }
+
+        function updatePartsReportSelectionCount() {
+            const boxes = Array.from(document.querySelectorAll('.parts-report-option'));
+            const selected = boxes.filter(cb => cb.checked).length;
+            const all = document.getElementById('parts-report-select-all');
+            if (all) {
+                all.checked = boxes.length > 0 && selected === boxes.length;
+                all.indeterminate = selected > 0 && selected < boxes.length;
+            }
+            const count = document.getElementById('parts-report-selected-count');
+            if (count) count.textContent = `${selected} de ${boxes.length} selecionadas`;
+        }
+
+        function generateSelectedPartsPDF() {
+            if (!currentPartsReportDiagnosticId) return;
+            const diag = diagnostics.find(d => d.id === currentPartsReportDiagnosticId);
+            if (!diag) return;
+            const allParts = Array.isArray(diag.pecas) ? diag.pecas : [];
+            const selectedIndexes = Array.from(document.querySelectorAll('.parts-report-option:checked'))
+                .map(cb => Number(cb.value)).filter(Number.isInteger);
+            const selectedParts = selectedIndexes.map(index => allParts[index]).filter(part => part !== undefined);
+            if (!selectedParts.length) {
+                showToast('Selecione pelo menos uma peça para gerar o relatório.', 'info');
+                return;
+            }
+            closePartsReportSelection();
+            downloadPartsPDF(diag.id, selectedParts);
+        }
+
+        // Gera o PDF somente com as peças escolhidas; não altera o diagnóstico salvo.
+        function downloadPartsPDF(id, selectedParts = null) {
             const diag = diagnostics.find(d => d.id === id);
             if (!diag) return;
             const printArea = document.getElementById('print-area');
             const esc = value => escapeHtml(value ?? '');
-            const pecas = Array.isArray(diag.pecas) ? diag.pecas : [];
+            const pecas = Array.isArray(selectedParts) ? selectedParts : (Array.isArray(diag.pecas) ? diag.pecas : []);
             printArea.innerHTML = `
                 <div style="font-family:Arial,sans-serif;color:#111;font-size:12px;">
                     <div style="border-bottom:3px solid #ef4444;padding-bottom:10px;margin-bottom:16px;">
@@ -2473,8 +2565,8 @@
                         <tr><td style="padding:7px;border:1px solid #ddd;"><strong>Ano:</strong> ${esc(diag.ano || '—')}</td><td style="padding:7px;border:1px solid #ddd;"><strong>Mecânico:</strong> ${esc(diag.mecanico)}</td></tr>
                         <tr><td colspan="2" style="padding:7px;border:1px solid #ddd;"><strong>Data do diagnóstico:</strong> ${esc(diag.data || '—')}</td></tr>
                     </table>
-                    <h2 style="font-size:14px;border-bottom:1px solid #ccc;padding-bottom:6px;margin:0 0 8px;">Peças selecionadas</h2>
-                    ${pecas.length ? `<ol style="padding-left:22px;line-height:1.7;">${pecas.map(p => `<li>${esc(p)}</li>`).join('')}</ol>` : '<p>Nenhuma peça foi selecionada neste diagnóstico.</p>'}
+                    <h2 style="font-size:14px;border-bottom:1px solid #ccc;padding-bottom:6px;margin:0 0 8px;">Peças para solicitar ao fornecedor</h2>
+                    ${pecas.length ? `<ol style="padding-left:22px;line-height:1.7;">${pecas.map(p => `<li>${esc(p)}</li>`).join('')}</ol>` : '<p>Nenhuma peça foi selecionada para solicitação.</p>'}
                     <p style="margin-top:24px;border-top:1px solid #ddd;padding-top:8px;font-size:9px;color:#666;">Documento gerado pelo DiagnosticoCarbral.</p>
                 </div>`;
             window.print();
